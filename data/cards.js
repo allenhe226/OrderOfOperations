@@ -1,6 +1,7 @@
 export const START_VAL = 10;
 export const TARGETS = [25, 50, 64, 75, 100, 120, 150, 200];
 export const HAND_SIZE = 4;
+export const DECK_SIZE = 40;
 
 // function that gives the relative probability for each operation
 const OPS = ["add", "add", "add", "sub", "sub", "sub", "mul", "div"];
@@ -23,11 +24,11 @@ export function generateCard(round) {
     }
     if (op === "mul") {
         const factor = randomInt(2, Math.max(2, Math.round(1 + power * 0.5)));
-        return {label: `×${amount}`, fn: v => v * amount};
+        return {label: `×${factor}`, fn: v => v * factor};
     }
     if (op === "div") {
         const factor = randomInt(2, Math.max(2, Math.round(1 + power * 0.5)));
-        return {label: `/${amount}`, fn: v => Math.round(v / amount)};
+        return {label: `/${factor}`, fn: v => Math.round(v / factor)};
     }
 }
 
