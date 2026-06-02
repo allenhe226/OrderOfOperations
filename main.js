@@ -1,29 +1,5 @@
 import {useState, useEffect, useCallback} from "react";
 
-const CARD_COUNT = 3;
-const CARD_MIN = 1;
-const CARD_MAX = 12;
-
-export function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-export function createRandomCards(count, min, max) {
-    const operations = [
-        amount => ({label: `+${amount}`, fn: v => v + amount}),
-        amount => ({label: `-${amount}`, fn: v => v - amount}),
-        amount => ({label: `*${amount}`, fn: v => v * amount}),
-        amount => ({label: `/${amount}`, fn: v => Math.round(v / amount)})
-    ];
-
-    const selectedOperations = shuffle(operations).slice(0, Math.min(count, operations.length));
-
-    return selectedOperations.map(makeCard => {
-        const amount = randomInt(min, max);
-        return makeCard(amount);
-    });
-}
-
 const CARD_DECK = createRandomCards(CARD_COUNT, CARD_MIN, CARD_MAX);
 // const CARD_DECK = [{label: "+3", fn: v => v+3}, {label: "+5", fn:v => v+5}]
 
@@ -52,4 +28,40 @@ export function drawCards(deck, count) {
     const drawn = deck.slice(0, count);
     const remaining = deck.slice(count);
     return {drawn, remaining};
+}
+
+export function replaceCard(hand, deck, cardIndex){
+    const activeDeck = deck.length === 0 ? buildDeck() : deck;
+    const { drawn: [newCard], remaining} = drawCards(activeDeck, 1)
+    const newHand = [...hand];
+    newHand.splice(cardIndex, 1, newCard);
+    return {newHand, newDeck : remaining};
+}
+
+export function checkWinner(playerVal, aiVal, target) {
+    const playerWin = playerVal == target;
+    const aiWin = aiVal === target;
+    if (playerWin && aiWin) return "draw";
+    if (playerWin) return "player";
+    if (aiWin) return "ai";
+    return null;
+}
+
+export function createInitialState() {
+    const deck = buildDeck();
+    const {drawn : hand, remaining} = drawCards(deck, HAND_SIZE);
+    const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
+    return {
+        deck: remaining,
+        hand, 
+        playerVal: INIT_VALUE,
+        aiVal: INIT_VALUE,
+        target,
+        round: 1,
+        selectedCardIndex: null,
+        phase: "select",
+        winner: null,
+        log: "Pick a card from your hand, then choose where to play it.",
+        playedCard: null,
+    };
 }
