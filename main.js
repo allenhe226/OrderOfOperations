@@ -4,11 +4,11 @@ const CARD_COUNT = 3;
 const CARD_MIN = 1;
 const CARD_MAX = 12;
 
-function randomInt(min, max) {
+export function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function createRandomCards(count, min, max) {
+export function createRandomCards(count, min, max) {
     const operations = [
         amount => ({label: `+${amount}`, fn: v => v + amount}),
         amount => ({label: `-${amount}`, fn: v => v - amount}),
@@ -31,7 +31,7 @@ const INIT_VALUE = 10;
 const TARGET_VALUE = [50,100,200,250,500]
 const HAND_SIZE = 4;
 
-function shuffle(arr) {
+export function shuffle(arr) {
     const a = [...arr];
     for (let i = 1; i < a.length; i++){
         const j = Math.floor(Math.random() * (i+1));
@@ -44,11 +44,11 @@ function shuffle(arr) {
     return a;
 }
 
-function buildDeck() {
+export function buildDeck() {
     return shuffle([...CARD_DECK])
 }
 
-function drawCards(deck, count) {
+export function drawCards(deck, count) {
     const drawn = deck.slice(0, count);
     const remaining = deck.slice(count);
     return {drawn, remaining};
