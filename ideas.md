@@ -8,5 +8,7 @@ Ideas:
   - maximize intercepts between target and shared functions? Python matplotlib?
 
 To Do List:
-- support using multiple cards per round (drag and drop)
 - home page?
+- more unique functions: log, trig functions?, reciprocial
+- more unique types: target changers, affect all cards
+- 

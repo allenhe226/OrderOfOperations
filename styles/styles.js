@@ -1,31 +1,31 @@
 // reusable colour tokens
 export const C = {
-  bg:              "#0d0d0d",  // page background
-  surface:         "#111111",  // card / panel background
-  surfaceHigh:     "#1a1a1a",  // slightly lighter surface (hover states)
-  border:          "#2a2a2a",  // default border
-  borderFaint:     "#1e1e1e",  // very subtle border
-  text:            "#e8e4d9",  // primary text
-  textMuted:       "#666666",  // secondary / label text
-  textFaint:       "#444444",  // very muted text
-  gold:            "#c8a96e",  // player accent
-  goldDim:         "#1a1610",  // gold-tinted surface
+  bg:              "#1c0e06",  // dark walnut wood background
+  surface:         "#271306",  // dark wood panel surface
+  surfaceHigh:     "#341a08",  // hover surface
+  border:          "#5a3518",  // warm wood-grain border
+  borderFaint:     "#3a1f0d",  // very subtle warm border
+  text:            "#f2ead6",  // warm cream
+  textMuted:       "#a07848",  // muted warm tone
+  textFaint:       "#6a4828",  // very muted warm tone
+  gold:            "#d4a84b",  // rich casino gold
+  goldDim:         "#2e1c07",  // gold-tinted surface
   red:             "#e05a5a",  // AI accent
-  redDim:          "#1a1010",  // red-tinted surface
-  felt:            "#192e1f",  // center table area (green felt)
-  feltBorder:      "#1e3320",  // felt border ring
-  feltGradA:       "#113b15",  // outer table gradient start
-  feltGradB:       "#132b16",  // outer table gradient end
-  feltInnerA:      "#0f1a12",  // inner target disc gradient start
-  feltInnerB:      "#122712",  // inner target disc gradient end
-  feltInnerBorder: "#1a2d1c",  // border around inner target disc
-  feltLabel:       "#2a4030",  // "Target" caption color in table center
-  feltSubLabel:    "#2a5030",  // rounds-left caption color in table center
-  seatIdleBorder:  "#2a2a2a",  // neutral border for non-active player seat
-  logText:         "#888888",  // action log text
-  hintText:        "#333333",  // helper hint shown during target selection
-  glowGoldLow:     "rgba(200,169,110,.2)",  // low-intensity glow keyframe value
-  glowGoldHigh:    "rgba(200,169,110,.5)",  // high-intensity glow keyframe value
+  redDim:          "#2a0f0f",  // red-tinted surface
+  felt:            "#1a5e30",  // rich casino green felt
+  feltBorder:      "#22773c",  // felt border ring
+  feltGradA:       "#1a5e30",  // outer table gradient start
+  feltGradB:       "#11391f",  // outer table gradient end
+  feltInnerA:      "#18402a",  // inner target disc gradient start
+  feltInnerB:      "#0d351d",  // inner target disc gradient end
+  feltInnerBorder: "#1a5e30",  // border around inner target disc
+  feltLabel:       "#3a9055",  // "Target" caption color in table center
+  feltSubLabel:    "#2d7845",  // rounds-left caption color in table center
+  seatIdleBorder:  "#5a3518",  // neutral border for non-active player seat
+  logText:         "#a07848",  // action log text
+  hintText:        "#5a3518",  // helper hint shown during target selection
+  glowGoldLow:     "rgba(212,168,75,.2)",   // low-intensity glow keyframe value
+  glowGoldHigh:    "rgba(212,168,75,.5)",   // high-intensity glow keyframe value
 };
 
 // layout of application

@@ -1,6 +1,6 @@
 export const START_VALUE = 10;
 export const TARGETS = [25, 50, 64, 75, 100, 120, 150, 200];
-export const HAND_SIZE = 4;
+export const HAND_SIZE = 7;
 export const DECK_SIZE = 40;
 
 // function that gives the relative probability for each operation
