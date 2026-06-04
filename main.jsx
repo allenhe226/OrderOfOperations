@@ -11,7 +11,9 @@ const AI_THINK_MS = 1500;
 const CARD_POP_MS = 420;        // card springs up at center
 const CARD_HOLD_MS = 80;         // brief pause at full size
 const CARD_FLY_MS = 480;         // flight to target
+const CARD_FADE_MS = 400;          // fade out time for
 const CARD_LAND_PAUSE_MS = 180;  // pause after landing before next card
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
 // maps a card label's leading operator character to a playing-card suit and colour
 function parseCard(label) {
@@ -38,13 +40,17 @@ const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
   @keyframes dealIn  { from{opacity:0;transform:translateY(14px) rotate(3deg)} to{opacity:1;transform:none} }
   @keyframes cardPlay {
-    from { opacity:0; transform:translate(-50%, calc(-50% + 40px)) scale(.6) rotate(-8deg); }
-    to   { opacity:1; transform:translate(-50%, -50%) scale(1) rotate(0deg); }
+    from { opacity:0; transform:scale(0.6) rotate(-8deg);}
+    to   { opacity:1; transform:scale(1) rotate(0deg); }
   }
   @keyframes flyToSeat {
-    from { opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0deg); }
-    to   { opacity:0; transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.86) rotate(0deg); }
+    from { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+    to   { opacity:0; transform:translate(var(--dx), var(--dy)) scale(0.86) rotate(0deg); }
   }
+  @keyframes fadeOut {
+    from {opacity:1;}
+    to {opacity:0;}
+    }
   @keyframes pulse   { 0%{transform:scale(1)} 40%{transform:scale(1.22)} 100%{transform:scale(1)} }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
   @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:none} }
@@ -141,7 +147,7 @@ export default function Main() {
     const [screen, setScreen] = useState('setup'); // 'setup' | 'game' | 'end'
     const [gs, setGs] = useState(null);
     const [pulsing, setPulse] = useState({}); // { playerIdx: true } briefly after value changes
-    // activeCard: { label, isAi, dx, dy } — the single card currently flying, or null
+    // activeCard: {type, label, isAi, dx, dy} — the single card currently flying, or null
     const [activeCard, setActiveCard] = useState(null);
     // liveVals: shown on seats during resolution, updated card-by-card
     const [liveVals, setLiveVals] = useState(null);
@@ -152,42 +158,56 @@ export default function Main() {
         setTimeout(() => setPulse(p => ({ ...p, [idx]: false })), 500);
     }
 
-    // Play a sequence of {label, isAi, targetIdx, newVal, playerCount} one at a time.
+    // Play a sequence of {type, label, isAi, targetIdx, newVal, playerCount} one at a time.
     // After the last card, call onDone().
-    function playSequence(steps, playerCount, initialVals, onDone) {
-        function playStep(i, currentVals) {
-            if (i >= steps.length) {
-                setActiveCard(null);
-                setLiveVals(null);
-                onDone();
-                return;
-            }
+    async function playSequence(steps, playerCount, initialVals, onDone) {
+        let currentVals = [...initialVals];
+
+        for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
+
+            // compute seat target
             const pos = seatPosition(step.targetIdx, playerCount);
-            // Vector from center (50,50) to seat — multiply for long travel
             const dx = `${(pos.x - 50) * 9}%`;
             const dy = `${(pos.y - 50) * 9}%`;
 
-            // Show card popping at center
-            setActiveCard({ type: step.type, label: step.label, isAi: step.isAi, dx, dy, phase: 'pop' });
+            const isSingle = step.type === "single";
 
-            // After pop+hold, switch to flying phase
-            setTimeout(() => {
-                setActiveCard(prev => prev ? { ...prev, phase: 'fly' } : null);
+            const phase = isSingle ? "fly" : "fade";
+            const duration = isSingle ? CARD_FLY_MS : CARD_FADE_MS;
 
-                // After flight lands, update the value on that seat
-                setTimeout(() => {
-                    const updatedVals = [...currentVals];
-                    updatedVals[step.targetIdx] = step.newVal;
-                    setLiveVals(updatedVals);
-                    triggerPulse(step.targetIdx);
+            // card pops into the middle
+            setActiveCard({
+                type: step.type,
+                label: step.label,
+                isAi: step.isAi,
+                dx,
+                dy,
+                phase: "pop"
+            });
 
-                    // Brief pause, then play next card
-                    setTimeout(() => playStep(i + 1, updatedVals), CARD_LAND_PAUSE_MS);
-                }, CARD_FLY_MS);
-            }, CARD_POP_MS + CARD_HOLD_MS);
+            await sleep(CARD_POP_MS + CARD_HOLD_MS);
+
+            // card either transitions through flying or fading
+            setActiveCard(prev =>
+                prev ? { ...prev, phase } : null
+            );
+
+            await sleep(duration);
+
+            // apply card
+            currentVals[step.targetIdx] = step.newVal;
+            setLiveVals([...currentVals]);
+            triggerPulse(step.targetIdx);
+
+            // small settle pause
+            await sleep(CARD_LAND_PAUSE_MS);
         }
-        playStep(0, initialVals);
+
+        // cleanup
+        setActiveCard(null);
+        setLiveVals(null);
+        onDone();
     }
 
     function resolveAfterMove(newVals, newHands, logMsg, nextFn) {
@@ -356,6 +376,18 @@ function GameScreen({gs, pulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onRe
         acc[play.targetIdx].push({ queueIdx, label: gs.hands[0][play.cardIdx].label });
         return acc;
     }, {});
+    function getAnimation(card) {
+        if (card.phase === "pop") {
+            return `cardPlay ${CARD_POP_MS}ms cubic-bezier(.34,1.56,.64,1) both`; 
+        }
+        if (card.phase === "fly") {
+            return `flyToSeat ${CARD_FLY_MS}ms cubic-bezier(.22,.61,.36,1) both`;
+        }
+        if (card.phase === "fade") {
+            return `fadeOut ${CARD_FADE_MS}ms cubic-bezier(.22,.61,.36,1) both`;
+        }
+        return "none";
+    }
     return (
         <div style={{maxWidth:660,margin:'0 auto',padding:'1rem',fontFamily:"'DM Mono',monospace",
         background:C.bg,minHeight:'100vh',color:C.text}}>
@@ -393,28 +425,32 @@ function GameScreen({gs, pulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onRe
                 const { suit, suitColor } = parseCard(activeCard.label);
                 return (
                     <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:12}}>
-                        <div style={{
-                            position:'absolute',
-                            left:'50%', top:'50%',
-                            width:58, height:84,
-                            borderRadius:8,
-                            background:'#f7f3e5',
-                            border:`2px solid ${activeCard.isAi ? C.red : C.gold}`,
-                            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                            boxShadow:`inset 0 0 0 1px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.65)`,
-                            animation: activeCard.phase === 'pop'
-                                ? `cardPlay ${CARD_POP_MS}ms cubic-bezier(.34,1.56,.64,1) both`
-                                : `flyToSeat ${CARD_FLY_MS}ms cubic-bezier(.22,.61,.36,1) both`,
-                            '--dx': activeCard.dx,
-                            '--dy': activeCard.dy,
-                        }}>
-                            <div style={{position:'absolute',top:4,left:5,lineHeight:1.15,textAlign:'left'}}>
-                                <div style={{fontSize:12,color:suitColor}}>{suit}</div>
-                            </div>
-                            <div style={{fontSize:20,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.label}</div>
-                            <div style={{fontSize:10,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.type}</div>
-                            <div style={{position:'absolute',bottom:4,right:5,lineHeight:1.15,textAlign:'right',transform:'rotate(180deg)'}}>
-                                <div style={{fontSize:12,color:suitColor}}>{suit}</div>
+                        {/* handles centering */}
+                        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)'}}>
+                            <div style = {{
+                                width:58,
+                                height:84,
+                                borderRadius:8,
+                                background:'#f7f3e5',
+                                border:`2px solid ${activeCard.isAi ? C.red : C.gold}`,
+                                display:'flex',
+                                flexDirection:'column',
+                                alignItems:'center',
+                                justifyContent:'center',
+                                boxShadow:`inset 0 0 0 1px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.65)`,
+                                position: "relative",
+                                animation: getAnimation(activeCard),
+                                '--dx': activeCard.dx,
+                                '--dy': activeCard.dy,
+                            }}>
+                                <div style={{position:'absolute',top:4,left:5,lineHeight:1.15,textAlign:'left'}}>
+                                    <div style={{fontSize:12,color:suitColor}}>{suit}</div>
+                                </div>
+                                <div style={{fontSize:20,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.label}</div>
+                                <div style={{fontSize:10,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.type}</div>
+                                <div style={{position:'absolute',bottom:4,right:5,lineHeight:1.15,textAlign:'right',transform:'rotate(180deg)'}}>
+                                    <div style={{fontSize:12,color:suitColor}}>{suit}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
