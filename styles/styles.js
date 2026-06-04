@@ -12,12 +12,12 @@ export const C = {
   goldDim:         "#1a1610",  // gold-tinted surface
   red:             "#e05a5a",  // AI accent
   redDim:          "#1a1010",  // red-tinted surface
-  felt:            "#0f1a12",  // center table area (green felt)
+  felt:            "#192e1f",  // center table area (green felt)
   feltBorder:      "#1e3320",  // felt border ring
-  feltGradA:       "#152216",  // outer table gradient start
-  feltGradB:       "#0a130b",  // outer table gradient end
+  feltGradA:       "#113b15",  // outer table gradient start
+  feltGradB:       "#132b16",  // outer table gradient end
   feltInnerA:      "#0f1a12",  // inner target disc gradient start
-  feltInnerB:      "#091209",  // inner target disc gradient end
+  feltInnerB:      "#122712",  // inner target disc gradient end
   feltInnerBorder: "#1a2d1c",  // border around inner target disc
   feltLabel:       "#2a4030",  // "Target" caption color in table center
   feltSubLabel:    "#2a5030",  // rounds-left caption color in table center

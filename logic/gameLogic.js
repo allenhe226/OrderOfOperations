@@ -35,24 +35,27 @@ export function getFinalRankings(vals, target) {
     return vals.map((v,i) => ({playerIdx: i, value: v, distance: Math.abs(v-target)})).sort((a,b) => a.distance - b.distance);
 }
 
-export function createInitialState(numAI, totalRounds) {
+export function createInitialState(numAI, totalRounds, cardsPerTurn = 1) {
     const numPlayers = numAI + 1;
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
     const player = PLAYERS.slice(0, numPlayers);
+    const hands = Array.from({ length: numPlayers }, () => generateHand(1));
+    const maxCardsPerTurn = hands[0].length;
     return {
         numPlayers,
         totalRounds,
+        cardsPerTurn: Math.max(1, Math.min(cardsPerTurn, maxCardsPerTurn)),
         target,
         round: 1,
         turnIndex: 0,
-        phase: "player-select",
-        selectedCardIdx: null,
+        phase: "player-plan",
+        queuedPlays: [],
         vals: Array(numPlayers).fill(START_VALUE),
-        hands: Array.from({ length: numPlayers }, () => generateHand(1)),
+        hands,
         names: player.map(p => p.name),
         emojis: player.map(p => p.emoji),
         cls: player.map(p => p.cls),
-        log: "Your turn - pick a card from your hand!",
+        log: "Your turn - drag cards onto player profiles, then press Ready.",
         earlyWinner: null,
         playedCard: null,
     };
