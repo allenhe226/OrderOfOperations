@@ -20,9 +20,9 @@ const GLOBAL_CSS = `
   @keyframes flyIn   { 0%{opacity:0;transform:scale(.4) translateY(60px) rotate(-12deg)} 60%{transform:scale(1.1) translateY(-4px)} 100%{opacity:1;transform:none} }
   @keyframes pulse   { 0%{transform:scale(1)} 40%{transform:scale(1.22)} 100%{transform:scale(1)} }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-  @keyframes glow    { 0%,100%{box-shadow:0 0 6px rgba(200,169,110,.2)} 50%{box-shadow:0 0 18px rgba(200,169,110,.5)} }
+    @keyframes glow    { 0%,100%{box-shadow:0 0 6px ${C.glowGoldLow}} 50%{box-shadow:0 0 18px ${C.glowGoldHigh}} }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0d0d0d}
+    body{background:${C.bg}}
 `;
 
 
@@ -210,7 +210,7 @@ export default function Main() {
 }
 
 function GameScreen({gs, pulsing, onSelectCard, onApplyCard}){
-    const size = 480;
+    const isTargeting = gs.turnIndex === 0 && gs.phase === 'player-target';
     return (
         <div style={{maxWidth:660,margin:'0 auto',padding:'1rem',fontFamily:"'DM Mono',monospace",
         background:C.bg,minHeight:'100vh',color:C.text}}>
@@ -227,16 +227,16 @@ function GameScreen({gs, pulsing, onSelectCard, onApplyCard}){
         {/* Circular table */}
         <div style={{position:'relative',width:'100%',paddingBottom:'100%',maxWidth:520,margin:'0 auto 1rem'}}>
             <div style={{position:'absolute',inset:0,borderRadius:'50%',
-            background:'radial-gradient(circle at 40% 35%,#152216,#0a130b)',
+            background:`radial-gradient(circle at 40% 35%,${C.feltGradA},${C.feltGradB})`,
             border:`2px solid ${C.feltBorder}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
 
             {/* Center: target + rounds */}
             <div style={{width:'55%',aspectRatio:'1',borderRadius:'50%',
-                background:'radial-gradient(circle,#0f1a12,#091209)',border:`1px solid #1a2d1c`,
+                background:`radial-gradient(circle,${C.feltInnerA},${C.feltInnerB})`,border:`1px solid ${C.feltInnerBorder}`,
                 display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,position:'relative'}}>
-                <div style={{fontSize:8,letterSpacing:'.2em',textTransform:'uppercase',color:'#2a4030'}}>Target</div>
+                <div style={{fontSize:8,letterSpacing:'.2em',textTransform:'uppercase',color:C.feltLabel}}>Target</div>
                 <div style={{fontSize:32,fontWeight:700,color:C.text}}>{gs.target}</div>
-                <div style={{fontSize:9,color:'#2a5030',letterSpacing:'.1em'}}>{gs.totalRounds - gs.round + 1} left</div>
+                <div style={{fontSize:9,color:C.feltSubLabel,letterSpacing:'.1em'}}>{gs.totalRounds - gs.round + 1} left</div>
 
                 {/* Flying card animation */}
                 {gs.playedCard && (
@@ -260,13 +260,26 @@ function GameScreen({gs, pulsing, onSelectCard, onApplyCard}){
             const isActive = gs.turnIndex === i && gs.phase !== 'game-over';
             const isHuman  = i === 0;
             const accent   = isHuman ? C.gold : C.red;
+            const canTarget = isTargeting;
+            const targetBorder = canTarget ? accent : (isActive ? accent : C.seatIdleBorder);
             return (
                 <div key={i} style={{position:'absolute',transform:'translate(-50%,-50%)',
-                left:`${x}%`,top:`${y}%`,textAlign:'center',width:90}}>
+                left:`${x}%`,top:`${y}%`,textAlign:'center',width:90,
+                cursor: canTarget ? 'pointer' : 'default'}}
+                onClick={canTarget ? () => onApplyCard(i) : undefined}
+                onKeyDown={canTarget ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onApplyCard(i);
+                    }
+                } : undefined}
+                role={canTarget ? 'button' : undefined}
+                tabIndex={canTarget ? 0 : undefined}
+                aria-label={canTarget ? `Apply selected card to ${name}` : undefined}>
                 <div style={{width:52,height:52,borderRadius:'50%',margin:'0 auto 5px',
                     display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,
-                    background:C.surface,border:`2px solid ${isActive?accent:'#2a2a2a'}`,
-                    animation: isActive ? 'glow 1.5s ease infinite' : 'none',
+                    background:C.surface,border:`2px solid ${targetBorder}`,
+                    animation: (isActive || canTarget) ? 'glow 1.5s ease infinite' : 'none',
                     transition:'border-color .3s'}}>
                     {gs.emojis[i]}
                 </div>
@@ -283,7 +296,7 @@ function GameScreen({gs, pulsing, onSelectCard, onApplyCard}){
 
         {/* Log */}
         <div style={{background:C.surface,border:`1px solid ${C.borderFaint}`,borderRadius:6,
-            padding:'9px 14px',fontSize:12,color:'#888',minHeight:36,marginBottom:'1rem',fontStyle:'italic'}}
+            padding:'9px 14px',fontSize:12,color:C.logText,minHeight:36,marginBottom:'1rem',fontStyle:'italic'}}
             aria-live="polite">{gs.log}</div>
 
         {/* Player hand */}
@@ -307,24 +320,9 @@ function GameScreen({gs, pulsing, onSelectCard, onApplyCard}){
                 ))}
             </div>
 
-            {/* Target buttons */}
             {gs.phase === 'player-target' && (
-                <div style={{marginBottom:'1rem'}}>
-                <div style={{fontSize:9,letterSpacing:'.22em',textTransform:'uppercase',color:C.textFaint,marginBottom:8}}>Play on…</div>
-                <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:6}}>
-                    {gs.names.map((name, i) => (
-                    <button key={i} onClick={()=>onApplyCard(i)} style={{
-                        padding:'9px 14px',borderRadius:8,background:C.surface,
-                        border:`1px solid ${i===0?C.gold:C.red}`,
-                        color:i===0?C.gold:C.red,
-                        fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:600,cursor:'pointer'}}>
-                        {i===0?'▲ Yourself':`▼ ${name}`}
-                    </button>
-                    ))}
-                </div>
-                <div style={{fontSize:10,color:'#333',letterSpacing:'.04em'}}>
-                    Play on yourself to close the gap, or on an opponent to disrupt them.
-                </div>
+                <div style={{marginBottom:'1rem',fontSize:10,color:C.hintText,letterSpacing:'.04em'}}>
+                    Click a player profile around the table to choose who gets the card.
                 </div>
             )}
             </>

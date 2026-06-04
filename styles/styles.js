@@ -1,30 +1,40 @@
 // reusable colour tokens
 export const C = {
-  bg:          "#0d0d0d",  // page background
-  surface:     "#111111",  // card / panel background
-  surfaceHigh: "#1a1a1a",  // slightly lighter surface (hover states)
-  border:      "#2a2a2a",  // default border
-  borderFaint: "#1e1e1e",  // very subtle border
-  text:        "#e8e4d9",  // primary text
-  textMuted:   "#666666",  // secondary / label text
-  textFaint:   "#444444",  // very muted text
-  gold:        "#c8a96e",  // player accent
-  goldDim:     "#1a1610",  // gold-tinted surface
-  red:         "#e05a5a",  // AI accent
-  redDim:      "#1a1010",  // red-tinted surface
-  felt:        "#0f1a12",  // center table area (green felt)
-  feltBorder:  "#1e3320",  // felt border ring
+  bg:              "#0d0d0d",  // page background
+  surface:         "#111111",  // card / panel background
+  surfaceHigh:     "#1a1a1a",  // slightly lighter surface (hover states)
+  border:          "#2a2a2a",  // default border
+  borderFaint:     "#1e1e1e",  // very subtle border
+  text:            "#e8e4d9",  // primary text
+  textMuted:       "#666666",  // secondary / label text
+  textFaint:       "#444444",  // very muted text
+  gold:            "#c8a96e",  // player accent
+  goldDim:         "#1a1610",  // gold-tinted surface
+  red:             "#e05a5a",  // AI accent
+  redDim:          "#1a1010",  // red-tinted surface
+  felt:            "#0f1a12",  // center table area (green felt)
+  feltBorder:      "#1e3320",  // felt border ring
+  feltGradA:       "#152216",  // outer table gradient start
+  feltGradB:       "#0a130b",  // outer table gradient end
+  feltInnerA:      "#0f1a12",  // inner target disc gradient start
+  feltInnerB:      "#091209",  // inner target disc gradient end
+  feltInnerBorder: "#1a2d1c",  // border around inner target disc
+  feltLabel:       "#2a4030",  // "Target" caption color in table center
+  feltSubLabel:    "#2a5030",  // rounds-left caption color in table center
+  seatIdleBorder:  "#2a2a2a",  // neutral border for non-active player seat
+  logText:         "#888888",  // action log text
+  hintText:        "#333333",  // helper hint shown during target selection
+  glowGoldLow:     "rgba(200,169,110,.2)",  // low-intensity glow keyframe value
+  glowGoldHigh:    "rgba(200,169,110,.5)",  // high-intensity glow keyframe value
 };
-
-const COLORS = C;
 
 // layout of application
 export const S = {
   root: {
     fontFamily: "'DM Mono', monospace",
-    background: COLORS.bg,
+    background: C.bg,
     minHeight: "100vh",
-    color: COLORS.text,
+    color: C.text,
     padding: "1.5rem",
     maxWidth: 660,
     margin: "0 auto",
@@ -40,13 +50,13 @@ export const S = {
     fontSize: 30,
     fontWeight: 700,
     letterSpacing: "0.05em",
-    color: COLORS.text,
+    color: C.text,
     margin: 0,
     lineHeight: 1,
   },
   subtitle: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: C.textMuted,
     letterSpacing: "0.2em",
     textTransform: "uppercase",
     marginTop: 5,
@@ -61,19 +71,19 @@ export const S = {
     marginBottom: "1rem",
   },
   scoreBox: {
-    border: `1px solid ${COLORS.border}`,
+    border: `1px solid ${C.border}`,
     borderRadius: 10,
     padding: "12px 14px",
     textAlign: "center",
-    background: COLORS.surface,
+    background: C.surface,
   },
-  scoreBoxYou: { borderColor: COLORS.gold },
-  scoreBoxAi:  { borderColor: COLORS.red  },
+  scoreBoxYou: { borderColor: C.gold },
+  scoreBoxAi:  { borderColor: C.red  },
   scoreName: {
     fontSize: 9,
     letterSpacing: "0.22em",
     textTransform: "uppercase",
-    color: COLORS.textMuted,
+    color: C.textMuted,
     marginBottom: 6,
   },
   scoreNum: {
@@ -82,26 +92,26 @@ export const S = {
     lineHeight: 1,
     transition: "color 0.3s",
   },
-  scoreNumYou: { color: COLORS.gold },
-  scoreNumAi:  { color: COLORS.red  },
+  scoreNumYou: { color: C.gold },
+  scoreNumAi:  { color: C.red  },
 
   targetBox: { textAlign: "center" },
   targetLabel: {
     fontSize: 9,
     letterSpacing: "0.22em",
     textTransform: "uppercase",
-    color: COLORS.textFaint,
+    color: C.textFaint,
   },
   targetNum: {
     fontSize: 20,
     fontWeight: 700,
-    color: COLORS.text,
+    color: C.text,
     lineHeight: 1,
     margin: "4px 0",
   },
   roundLabel: {
     fontSize: 10,
-    color: COLORS.textFaint,
+    color: C.textFaint,
     letterSpacing: "0.1em",
   },
 
@@ -113,14 +123,14 @@ export const S = {
     marginBottom: "1rem",
   },
   progressWrap: {
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.borderFaint}`,
+    background: C.surface,
+    border: `1px solid ${C.borderFaint}`,
     borderRadius: 6,
     padding: "8px 10px",
   },
   progressLabel: {
     fontSize: 9,
-    color: COLORS.textMuted,
+    color: C.textMuted,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     marginBottom: 6,
@@ -134,8 +144,8 @@ export const S = {
 
   // ── Center table (the "felt" zone where played cards land) ──
   table: {
-    background: COLORS.felt,
-    border: `1px solid ${COLORS.feltBorder}`,
+    background: C.felt,
+    border: `1px solid ${C.feltBorder}`,
     borderRadius: 12,
     minHeight: 100,
     display: "flex",
@@ -162,8 +172,8 @@ export const S = {
 
   // ── Log strip ──
   log: {
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.borderFaint}`,
+    background: C.surface,
+    border: `1px solid ${C.borderFaint}`,
     borderRadius: 6,
     padding: "9px 14px",
     fontSize: 12,
@@ -179,7 +189,7 @@ export const S = {
     fontSize: 9,
     letterSpacing: "0.22em",
     textTransform: "uppercase",
-    color: COLORS.textFaint,
+    color: C.textFaint,
     marginBottom: 10,
   },
   hand: {
@@ -191,8 +201,8 @@ export const S = {
 
   // Base card style — hover/selected variants are applied in CardTile
   card: {
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.border}`,
+    background: C.surface,
+    border: `1px solid ${C.border}`,
     borderRadius: 10,
     padding: "20px 14px",
     minWidth: 66,
@@ -208,17 +218,17 @@ export const S = {
     transition: "transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease",
   },
   cardHover: {
-    borderColor: COLORS.gold,
-    background: COLORS.goldDim,
+    borderColor: C.gold,
+    background: C.goldDim,
     transform: "translateY(-6px) rotate(-1deg)",
     boxShadow: `0 8px 24px rgba(200,169,110,0.15)`,
   },
   cardSelected: {
-    borderColor: COLORS.gold,
-    background: COLORS.goldDim,
-    color: COLORS.gold,
+    borderColor: C.gold,
+    background: C.goldDim,
+    color: C.gold,
     transform: "translateY(-8px)",
-    boxShadow: `0 0 0 2px ${COLORS.gold}44, 0 12px 28px rgba(200,169,110,0.2)`,
+    boxShadow: `0 0 0 2px ${C.gold}44, 0 12px 28px rgba(200,169,110,0.2)`,
   },
   cardDisabled: {
     opacity: 0.3,
@@ -229,8 +239,8 @@ export const S = {
   // ── The card that flies into the center ──
   // (animation keyframes are injected in index.css / a <style> tag)
   playedCard: {
-    background: COLORS.surface,
-    border: `2px solid ${COLORS.gold}`,
+    background: C.surface,
+    border: `2px solid ${C.gold}`,
     borderRadius: 12,
     width: 80,
     height: 110,
@@ -240,13 +250,13 @@ export const S = {
     justifyContent: "center",
     fontSize: 22,
     fontWeight: 700,
-    color: COLORS.gold,
+    color: C.gold,
     boxShadow: `0 0 32px rgba(200,169,110,0.25)`,
     animation: "cardPlay 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
   },
   playedCardAi: {
-    borderColor: COLORS.red,
-    color: COLORS.red,
+    borderColor: C.red,
+    color: C.red,
     boxShadow: `0 0 32px rgba(224,90,90,0.25)`,
   },
   playedCardTarget: {
@@ -266,10 +276,10 @@ export const S = {
   },
   targetBtn: {
     padding: "14px 0",
-    border: `1px solid ${COLORS.border}`,
+    border: `1px solid ${C.border}`,
     borderRadius: 10,
-    background: COLORS.surface,
-    color: COLORS.text,
+    background: C.surface,
+    color: C.text,
     fontSize: 13,
     fontFamily: "'DM Mono', monospace",
     letterSpacing: "0.05em",
@@ -277,12 +287,12 @@ export const S = {
     fontWeight: 600,
     transition: "all 0.15s ease",
   },
-  targetBtnSelf: { borderColor: COLORS.gold, color: COLORS.gold },
-  targetBtnOpp:  { borderColor: COLORS.red,  color: COLORS.red  },
+  targetBtnSelf: { borderColor: C.gold, color: C.gold },
+  targetBtnOpp:  { borderColor: C.red,  color: C.red  },
 
   hint: {
     fontSize: 11,
-    color: COLORS.textFaint,
+    color: C.textFaint,
     textAlign: "center",
     marginTop: 8,
     letterSpacing: "0.04em",
@@ -300,8 +310,8 @@ export const S = {
     animation: "fadeIn 0.3s ease",
   },
   modal: {
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.border}`,
+    background: C.surface,
+    border: `1px solid ${C.border}`,
     borderRadius: 14,
     padding: "2.5rem 2rem",
     textAlign: "center",
@@ -313,7 +323,7 @@ export const S = {
     fontFamily: "'Playfair Display', serif",
     fontSize: 26,
     fontWeight: 700,
-    color: COLORS.text,
+    color: C.text,
     margin: "0 0 8px",
   },
   modalMsg: {
@@ -324,8 +334,8 @@ export const S = {
   },
   playAgainBtn: {
     padding: "12px 28px",
-    background: COLORS.gold,
-    color: COLORS.bg,
+    background: C.gold,
+    color: C.bg,
     border: "none",
     borderRadius: 8,
     fontSize: 12,
@@ -336,3 +346,4 @@ export const S = {
     cursor: "pointer",
   },
 };
+
