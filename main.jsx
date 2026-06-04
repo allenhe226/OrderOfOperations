@@ -2,7 +2,7 @@
 
 import React from "react";
 import {useState, useEffect, useRef} from "react";
-import {createInitialState, replaceCard, checkExactWin, getFinalRankings} from "./logic/gameLogic.js";
+import {createInitialState,replaceCard,checkExactWin,getFinalRankings} from "./logic/gameLogic.js";
 import {aiChooseMove} from "./logic/aiLogic.js";
 import {HAND_SIZE} from "./data/cards.js";
 import {C} from "./styles/styles.js";
@@ -169,7 +169,7 @@ export default function Main() {
             const dy = `${(pos.y - 50) * 9}%`;
 
             // Show card popping at center
-            setActiveCard({ label: step.label, isAi: step.isAi, dx, dy, phase: 'pop' });
+            setActiveCard({ type: step.type, label: step.label, isAi: step.isAi, dx, dy, phase: 'pop' });
 
             // After pop+hold, switch to flying phase
             setTimeout(() => {
@@ -194,7 +194,7 @@ export default function Main() {
         const exactIdx = checkExactWin(newVals, gs.target);
         if (exactIdx !== -1) {
           setGs(prev => ({ ...prev, vals: newVals, hands: newHands,
-            log: logMsg + ` — ${newVals[exactIdx] === gs.target ? (exactIdx===0?'You hit':'${gs.names[exactIdx]} hit') : ''} the target exactly!`,
+            log: logMsg + ` — ${newVals[exactIdx] === gs.target ? (exactIdx===0?'You hit':`${gs.names[exactIdx]} hit`) : ''} the target exactly!`,
             phase:'game-over', earlyWinner: exactIdx }));
           setTimeout(() => setScreen('end'), 600);
           return true;
@@ -275,7 +275,7 @@ export default function Main() {
             const nextVal = card.fn(oldVal);
             runningVals[play.targetIdx] = nextVal;
             newHands = replaceCard(newHands, 0, play.cardIdx, gs.round);
-            steps.push({ label: card.label, isAi: false, targetIdx: play.targetIdx, newVal: nextVal });
+            steps.push({type: card.type, label: card.label, isAi: false, targetIdx: play.targetIdx, newVal: nextVal });
             const who = play.targetIdx === 0 ? "yourself" : gs.names[play.targetIdx];
             summary.push(`${i + 1}) ${card.label} on ${who}: ${oldVal} -> ${nextVal}`);
         });
@@ -310,7 +310,7 @@ export default function Main() {
                 const newVal = card.fn(oldVal);
                 runningVals[move.targetPlayerIdx] = newVal;
                 nextHands = replaceCard(nextHands, ai, move.cardIdx, gs.round);
-                steps.push({ label: card.label, isAi: true, targetIdx: move.targetPlayerIdx, newVal });
+                steps.push({type: card.type, label: card.label, isAi: true, targetIdx: move.targetPlayerIdx, newVal});
                 const who = move.targetPlayerIdx === ai ? "itself" : gs.names[move.targetPlayerIdx];
                 summary.push(`${i + 1}) ${card.label} on ${who}: ${oldVal} -> ${newVal}`);
             }
@@ -412,6 +412,7 @@ function GameScreen({gs, pulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onRe
                                 <div style={{fontSize:12,color:suitColor}}>{suit}</div>
                             </div>
                             <div style={{fontSize:20,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.label}</div>
+                            <div style={{fontSize:10,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.type}</div>
                             <div style={{position:'absolute',bottom:4,right:5,lineHeight:1.15,textAlign:'right',transform:'rotate(180deg)'}}>
                                 <div style={{fontSize:12,color:suitColor}}>{suit}</div>
                             </div>
@@ -533,6 +534,7 @@ function GameScreen({gs, pulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onRe
                         <div style={{fontSize:12,color:suitColor,lineHeight:1}}>{suit}</div>
                     </div>
                     <div style={{fontSize:20,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{card.label}</div>
+                    <div style={{fontSize:10,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{card.type}</div>
                     <div style={{position:'absolute',bottom:4,right:5,transform:'rotate(180deg)'}}>
                         <div style={{fontSize:12,color:suitColor,lineHeight:1}}>{suit}</div>
                     </div>

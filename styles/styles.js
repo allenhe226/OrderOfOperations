@@ -13,12 +13,12 @@ export const C = {
   red:             "#e05a5a",  // AI accent
   redDim:          "#2a0f0f",  // red-tinted surface
   felt:            "#1a5e30",  // rich casino green felt
-  feltBorder:      "#22773c",  // felt border ring
+  feltBorder:      "#125224",  // felt border ring
   feltGradA:       "#1a5e30",  // outer table gradient start
   feltGradB:       "#11391f",  // outer table gradient end
   feltInnerA:      "#18402a",  // inner target disc gradient start
   feltInnerB:      "#0d351d",  // inner target disc gradient end
-  feltInnerBorder: "#1a5e30",  // border around inner target disc
+  feltInnerBorder: "#073014",  // border around inner target disc
   feltLabel:       "#3a9055",  // "Target" caption color in table center
   feltSubLabel:    "#2d7845",  // rounds-left caption color in table center
   seatIdleBorder:  "#5a3518",  // neutral border for non-active player seat
