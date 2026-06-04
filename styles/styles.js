@@ -1,5 +1,5 @@
 // reusable colour tokens
-export const COLORS = {
+export const C = {
   bg:          "#0d0d0d",  // page background
   surface:     "#111111",  // card / panel background
   surfaceHigh: "#1a1a1a",  // slightly lighter surface (hover states)
@@ -15,6 +15,8 @@ export const COLORS = {
   felt:        "#0f1a12",  // center table area (green felt)
   feltBorder:  "#1e3320",  // felt border ring
 };
+
+const COLORS = C;
 
 // layout of application
 export const S = {

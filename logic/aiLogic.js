@@ -6,27 +6,31 @@ function score(newVal, oldVal, target) {
 }
 
 // greedy function that makes the AI choose the best local move
-export function aiChooseMove(hand, aiVal, playerVal, target){
-    // set best score as low as possible, and best move to a random arbritary move
-    let bestScore = -Infinity
-    let bestMove = {cardIndex: 0, applyTo: "self"};
-    hand.forEach((card, i) => {
-        // for each card, check how much closer the AI can be to the target
-        const newAiVal = card.fn(aiVal);
-        const selfScore = score(newAiVal, aiVal, target);
-        if (selfScore > bestScore){
-            bestScore = selfScore;
-            bestMove = {cardIndex: i, applyTo: "self"};
-        }
+export function aiChooseMove(aiIdx, hands, vals, target){
+    const hand = hands[aiIdx];
+    const myVal = vals[aiIdx];
+    let best = -Infinity, bestCard = 0, bestTarget = aiIdx, closestDist = Infinity;
 
-        // for each card, check how much farther the player can be to the target
-        const newPlayerVal = card.fn(playerVal);
-        const otherScore = -score(newPlayerVal, playerVal, target);
-        if (otherScore > bestScore){
-            bestScore = otherScore;
-            bestMove = {cardIndex: i, applyTo: "player"};
+    // compares each card's score with itself and other people
+    hand.forEach((card, ci) => {
+        const selfScore = score(card.fn(myVal), myVal, target);
+        if (selfScore > best) {
+            best = selfScore;
+            bestCard = ci;
+            bestTarget = aiIdx;
         }
+        vals.forEach((v, pi) => {
+            if (pi === aiIdx) return;
+            const oppScore = -score(card.fn(v), v, target);
+            const curDist = Math.abs(v - target);
+            if (oppScore > best && curDist < closestDist) {
+                best = oppScore;
+                bestCard = ci;
+                bestTarget = pi;
+                closestDist = curDist;
+            }
+        })
     });
-    // return the best move out of all these options
-    return bestMove;
+    // return the best move for the AI
+    return {cardIdx: bestCard, targetPlayerIdx: bestTarget};
 }

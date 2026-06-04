@@ -1,4 +1,4 @@
-export const START_VAL = 10;
+export const START_VALUE = 10;
 export const TARGETS = [25, 50, 64, 75, 100, 120, 150, 200];
 export const HAND_SIZE = 4;
 export const DECK_SIZE = 40;
@@ -33,8 +33,8 @@ export function generateCard(round) {
 }
 
 // creates a hand using these randomly generated cards
-export function generateHand(round) {
-    return Array.from({length: HAND_SIZE}, () => generateCard(round))
+export function generateHand(round = 1, size = HAND_SIZE) {
+    return Array.from({length: size}, () => generateCard(round))
 }
 
 // helper function for generating a random number within an interval (inclusive)

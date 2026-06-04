@@ -1,4 +1,12 @@
-import { START_VAL, TARGETS, HAND_SIZE, DECK_SIZE, generateCard } from "../data/cards.js";
+import { START_VALUE, TARGETS, generateCard, generateHand } from "../data/cards.js";
+
+// data for each player
+export const PLAYERS = [
+    {name: "You", emoji: "🧑", cls: "you"},
+    {name: "Delta", emoji: "🤖", cls: "ai1"},
+    {name: "Epsilon", emoji: "🤖", cls: "ai2"},
+    {name: "Zeta", emoji: "🤖", cls: "ai3"},
+]
 
 export function shuffle(arr) {
     const a = [...arr];
@@ -13,48 +21,39 @@ export function shuffle(arr) {
     return a;
 }
 
-export function buildDeck() {
-    return shuffle(Array.from({ length: DECK_SIZE }, () => generateCard(1)));
+export function replaceCard(hand, playerIdx, cardIdx, round){
+    const newHands = hand.map(h => [...h]);
+    newHands[playerIdx][cardIdx] = generateCard(round);
+    return newHands;
 }
 
-export function drawCards(deck, count) {
-    const drawn = deck.slice(0, count);
-    const remaining = deck.slice(count);
-    return {drawn, remaining};
+export function checkExactWin(vals, target) {
+    return vals.findIndex(v => v === target);
 }
 
-export function replaceCard(hand, deck, cardIndex){
-    const activeDeck = deck.length === 0 ? buildDeck() : deck;
-    const { drawn: [newCard], remaining} = drawCards(activeDeck, 1)
-    const newHand = [...hand];
-    newHand.splice(cardIndex, 1, newCard);
-    return {newHand, newDeck : remaining};
+export function getFinalRankings(vals, target) {
+    return vals.map((v,i) => ({playerIdx: i, value: v, distance: Math.abs(v-target)})).sort((a,b) => a.distance - b.distance);
 }
 
-export function checkWinner(playerVal, aiVal, target) {
-    const playerWin = playerVal === target;
-    const aiWin = aiVal === target;
-    if (playerWin && aiWin) return "draw";
-    if (playerWin) return "player";
-    if (aiWin) return "ai";
-    return null;
-}
-
-export function createInitialState() {
-    const deck = buildDeck();
-    const {drawn : hand, remaining} = drawCards(deck, HAND_SIZE);
+export function createInitialState(numAI, totalRounds) {
+    const numPlayers = numAI + 1;
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
+    const player = PLAYERS.slice(0, numPlayers);
     return {
-        deck: remaining,
-        hand, 
-        playerVal: START_VAL,
-        aiVal: START_VAL,
+        numPlayers,
+        totalRounds,
         target,
         round: 1,
-        selectedCardIndex: null,
-        phase: "select",
-        winner: null,
-        log: "Pick a card from your hand, then choose where to play it.",
+        turnIndex: 0,
+        phase: "player-select",
+        selectedCardIdx: null,
+        vals: Array(numPlayers).fill(START_VALUE),
+        hands: Array.from({ length: numPlayers }, () => generateHand(1)),
+        names: player.map(p => p.name),
+        emojis: player.map(p => p.emoji),
+        cls: player.map(p => p.cls),
+        log: "Your turn - pick a card from your hand!",
+        earlyWinner: null,
         playedCard: null,
     };
 }
