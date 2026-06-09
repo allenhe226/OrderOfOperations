@@ -1,12 +1,15 @@
 // greedy function that makes the AI choose the best local move
-export function aiChooseMove(aiIdx, hands, vals, target){
+export function aiChooseMove(aiIdx, hands, vals, target, excludedCardIdxs = new Set()){
     const aiHand = hands[aiIdx];
     const aiVal = vals[aiIdx];
+    const unavailable = excludedCardIdxs instanceof Set ? excludedCardIdxs : new Set(excludedCardIdxs);
     let bestScore = -Infinity;
     let bestMove = { cardIdx: 0, targetPlayerIdx: aiIdx};
 
     // compares each card's score with itself and other people
     aiHand.forEach((card, cardIdx) => {
+        if (unavailable.has(cardIdx)) return;
+
         if (card.type === "target") {
             const newTarget = card.fn(target);
             
@@ -36,7 +39,7 @@ export function aiChooseMove(aiIdx, hands, vals, target){
 
             if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: aiIdx};}
             vals.forEach((val, playerIdx) => {
-                if (idx === aiIdx) return;
+                if (playerIdx === aiIdx) return;
 
                 // get higher score for pushing opponents away from target
                 const closestDist = Infinity;

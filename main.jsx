@@ -365,9 +365,11 @@ export default function Main() {
             let tempHands = gs.hands;
             let tempVals = [...gs.vals];
             let tempTarget = gs.target;
+            const usedCardIdxs = new Set();
 
             for (let i = 0; i < count; i++) {
-                const move = aiChooseMove(ai, tempHands, tempVals, tempTarget);
+                const move = aiChooseMove(ai, tempHands, tempVals, tempTarget, usedCardIdxs);
+                usedCardIdxs.add(move.cardIdx);
                 const card = tempHands[ai][move.cardIdx];
                 if (card.type === "target") {
                     tempTarget = card.fn(tempTarget);
