@@ -15,19 +15,6 @@ const CARD_FADE_MS = 400;          // fade out time for
 const CARD_LAND_PAUSE_MS = 180;  // pause after landing before next card
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-// maps a card label's leading operator character to a playing-card suit and colour
-function parseCard(label) {
-    const map = {
-        '+': { suit: '♦', suitColor: '#c0392b' },
-        '-': { suit: '♠', suitColor: '#2c3e50' },
-        '×': { suit: '♣', suitColor: '#1e6e3a' },
-        '/': { suit: '♥', suitColor: '#c0392b' },
-        '^': { suit: '★', suitColor: '#b8860b' },
-        '√': { suit: '◆', suitColor: '#0d7377' },
-    };
-    return { ...(map[label[0]] ?? { suit: '●', suitColor: '#555' }), label };
-}
-
 // function for determining a player's cartesian coordinates in a circle
 // positions for seat elements at two radii
 function seatPosition(playerIdx, total, r = 50) {
@@ -64,6 +51,35 @@ const GLOBAL_CSS = `
   }
 `;
 
+// card visual helpers
+function cardTypeColors(type) {
+  return C.typeColors[type] ?? C.typeColors.single;
+}
+
+function CardPip({ label, type, isAi, phase, dx, dy }) {
+  const tc = cardTypeColors(type);
+  function getAnim() {
+    if (phase === "pop")  return `cardPlay ${CARD_POP_MS}ms cubic-bezier(.34,1.56,.64,1) both`;
+    if (phase === "fly")  return `flyToSeat ${CARD_FLY_MS}ms cubic-bezier(.22,.61,.36,1) both`;
+    if (phase === "fade") return `fadeOut ${CARD_FADE_MS}ms cubic-bezier(.22,.61,.36,1) both`;
+    return "none";
+  }
+  const badgeColor = type === "all" ? "#7a2fd4" : type === "target" ? "#1a8fd4" : C.gold;
+  return (
+    <div style={{ width: 58, height: 84, borderRadius: 8, background: tc.bg,
+      border: `2px solid ${isAi ? C.red : tc.border}`,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.65)",
+      position: "relative", animation: getAnim(), "--dx": dx, "--dy": dy }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: tc.suit,
+        fontFamily: "'DM Mono',monospace", lineHeight: 1, textAlign: "center" }}>{label}</div>
+      <div style={{ fontSize: 9, color: badgeColor, fontWeight: 700, marginTop: 3,
+        background: `${badgeColor}22`, borderRadius: 99, padding: "1px 5px", letterSpacing: ".05em" }}>
+        {type}
+      </div>
+    </div>
+  );
+}
 
 // setup screen
 function SetupScreen({onStart}){
@@ -74,27 +90,38 @@ function SetupScreen({onStart}){
     const [useCustom, setUseCustom] = useState(false);
     const finalRounds = useCustom ? customRounds : rounds;
     const chip = (val, current, onClick, label) => (
-        <button key={val}
-            onClick = {onClick}
-            style = {{
-                padding: '7px 15px', 
-                border: `1px solid ${current === val ? C.gold:C.border}`,
-                borderRadius: 20,
-                background: current === val ? C.goldDim : C.bg,
-                color: current === val ? C.gold : C.textMuted,
-                fontFamily: "'DM Mono', monospace",
-                fontSize: 13,
-                cursor: "pointer", 
-                transition: "all .20s",
-            }}>
-            {label || val}
-        </button>
-    )
+        <button key={val} onClick = {onClick} style = {{
+            padding: '7px 15px', 
+            border: `1px solid ${current === val ? C.gold : C.border}`,
+            borderRadius: 20,
+            background: current === val ? C.goldDim : C.bg,
+            color: current === val ? C.gold : C.textMuted,
+            fontFamily: "'DM Mono', monospace",
+            fontSize: 13,
+            cursor: "pointer", 
+            transition: "all .20s",
+        }}> {label ?? val} </button>
+    );
 
     return (
         <div style={{maxWidth:480,margin:'0 auto',padding:'2rem 1.25rem',animation:'fadeIn .4s ease'}}>
         <h1 style={{fontFamily:"'Cinzel',serif",fontSize:26,textAlign:'center',marginBottom:4,color:C.gold,letterSpacing:'.06em'}}>Order of Operations</h1>
         <p style={{fontSize:10,letterSpacing:'.2em',textTransform:'uppercase',color:C.textMuted,textAlign:'center',marginBottom:'1.75rem'}}>Math Card Game</p>
+
+        {/* Card type legend */}
+        <div style = {{background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "1rem", marginBottom: "1rem"}}>
+            <div style = {{fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", color: C.textMuted, marginBottom: 10}}>Card Types</div>
+            {[
+                {type: "single", label: "🏹 Single", color: C.typeColors.single.border, desc: "Apply to one player"},
+                {type: "all", label: "⚡ All", color: C.typeColors.all.border, desc: "Applies to all players"},
+                {type: "target", label: "🎯 Target", color: C.typeColors.target.border, desc: "Apply to the target number"},
+            ].map(r => (
+                <div key = {r.type} style = {{display: "flex", alignItems: "center", gap: 10, marginBottom: 6}}>
+                    <span style = {{fontSize: 11, padding: "2px 8px", borderRadius: 99, background: `${r.color}22`,
+                    border: `1px solid ${r.color}`, color: r.color, fontfamily: "'DM Mono', monospace", minWidth: 64, textAlign: "center"}}>{r.label}</span>
+                </div>
+            ))}
+        </div>
 
         {/* AI count selector */}
         <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'1.1rem',marginBottom:'1rem'}}>
@@ -136,7 +163,7 @@ function SetupScreen({onStart}){
             width:'100%',padding:14,background:C.gold,color:C.bg,border:'none',
             borderRadius:10,fontSize:13,fontFamily:"'DM Mono',monospace",fontWeight:700,
             letterSpacing:'.12em',textTransform:'uppercase',cursor:'pointer'
-        }}>Start Game</button>
+        }}>Enter The Game</button>
         </div>
     );
 }
@@ -147,97 +174,140 @@ export default function Main() {
     const [screen, setScreen] = useState('setup'); // 'setup' | 'game' | 'end'
     const [gs, setGs] = useState(null);
     const [pulsing, setPulse] = useState({}); // { playerIdx: true } briefly after value changes
+    const [targetPulsing, setTargetPulse] = useState(false);
     // activeCard: {type, label, isAi, dx, dy} — the single card currently flying, or null
     const [activeCard, setActiveCard] = useState(null);
     // liveVals: shown on seats during resolution, updated card-by-card
     const [liveVals, setLiveVals] = useState(null);
+    const [liveTarget, setLiveTarget] = useState(null);
     const timerRef = useRef(null);
 
     function triggerPulse(idx) {
         setPulse(p => ({ ...p, [idx]: true }));
-        setTimeout(() => setPulse(p => ({ ...p, [idx]: false })), 500);
+        setTimeout(() => setPulse(p => ({...p, [idx]: false})), 500);
     }
 
-    // Play a sequence of {type, label, isAi, targetIdx, newVal, playerCount} one at a time.
+    function triggerTargetPulse() {
+        setTargetPulse(true)
+        setTimeout(() => setTargetPulse(false), 600);
+    }
+
+    // Play a sequence of {type, label, isAi, phase targets: [{targetIdx, newVal}] | "target"} one at a time.
     // After the last card, call onDone().
-    async function playSequence(steps, playerCount, initialVals, onDone) {
+    async function playSequence(steps, playerCount, initialVals, initialTarget, onDone) {
         let currentVals = [...initialVals];
+        let currentTarget = initialTarget
 
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
 
-            // compute seat target
-            const pos = seatPosition(step.targetIdx, playerCount);
-            const dx = `${(pos.x - 50) * 9}%`;
-            const dy = `${(pos.y - 50) * 9}%`;
+            // determine card
+            const isTargetCard = step.type === "target";
+            const isAllCard = step.type === "all";
 
-            const isSingle = step.type === "single";
+            // determine fly target position for animation
+            let dx = "0%", dy = "0%";
+            if (!isTargetCard && !isAllCard) {
+                const pos = seatPosition(step.targets[0].targetIdx, playerCount);
+                dx = `${(pos.x - 50) * 9}%`;
+                dy = `${(pos.y - 50) * 9}%`;
+            }
 
-            const phase = isSingle ? "fly" : "fade";
-            const duration = isSingle ? CARD_FLY_MS : CARD_FADE_MS;
-
-            // card pops into the middle
-            setActiveCard({
-                type: step.type,
-                label: step.label,
-                isAi: step.isAi,
-                dx,
-                dy,
-                phase: "pop"
-            });
-
+            // pop card into center
+            setActiveCard({label: step.label, type: step.type, isAi: step.isAi, dx, dy, phase: "pop"});
             await sleep(CARD_POP_MS + CARD_HOLD_MS);
 
-            // card either transitions through flying or fading
-            setActiveCard(prev =>
-                prev ? { ...prev, phase } : null
-            );
+            // fly or fade animation
+            const flyPhase = isTargetCard ? "fade" : isAllCard ? "fade" : "fly";
+            const flyDur = isTargetCard ? CARD_FADE_MS : isAllCard ? CARD_FADE_MS : CARD_FLY_MS;
+            setActiveCard(prev => prev ? {...prev, phase: flyPhase} : null);
+            await sleep(flyDur);
 
-            await sleep(duration);
-
-            // apply card
-            currentVals[step.targetIdx] = step.newVal;
-            setLiveVals([...currentVals]);
-            triggerPulse(step.targetIdx);
-
-            // small settle pause
+            if (isTargetCard) {
+                currentTarget = step.newTarget;
+                setLiveTarget(currentTarget);
+                triggerTargetPulse();
+            } else {
+                step.targets.forEach(({targetIdx, newVal}) => {
+                    currentVals[targetIdx] = newVal;
+                    triggerPulse(targetIdx);
+                });
+                setLiveVals([...currentVals]);
+            }
             await sleep(CARD_LAND_PAUSE_MS);
         }
 
-        // cleanup
+        // reset all states
         setActiveCard(null);
         setLiveVals(null);
-        onDone();
+        setLiveTarget(null);
+        onDone(currentVals, currentTarget);
     }
 
-    function resolveAfterMove(newVals, newHands, logMsg, nextFn) {
-        const exactIdx = checkExactWin(newVals, gs.target);
+    function resolveAfterMove(newVals, newTarget, newHands, logMsg, nextFn) {
+        const exactIdx = checkExactWin(newVals, newTarget);
         if (exactIdx !== -1) {
-          setGs(prev => ({ ...prev, vals: newVals, hands: newHands,
-            log: logMsg + ` — ${newVals[exactIdx] === gs.target ? (exactIdx===0?'You hit':`${gs.names[exactIdx]} hit`) : ''} the target exactly!`,
-            phase:'game-over', earlyWinner: exactIdx }));
-          setTimeout(() => setScreen('end'), 600);
+          setGs(prev => ({ ...prev, vals: newVals, hands: newHands, target: newTarget,
+            log: logMsg + ` — ${exactIdx === 0 ? "You hit" : prev.names[exactIdx] + " hit"} the target exactly!`,
+            phase: "game-over", earlyWinner: exactIdx}));
+          setTimeout(() => setScreen("end"), 600);
           return true;
         }
-        nextFn(newVals, newHands, logMsg);
+        nextFn(newVals, newTarget, newHands, logMsg);
         return false;
     }
 
-    function advanceTurn(vals, hands, log) {
+    function advanceTurn(vals, target, hands, log) {
         setGs(prev => {
-        const nextTurn = (prev.turnIndex + 1) % prev.numPlayers;
-        const newRound = nextTurn === 0 ? prev.round + 1 : prev.round;
+            const nextTurn = (prev.turnIndex + 1) % prev.numPlayers;
+            const newRound = nextTurn === 0 ? prev.round + 1 : prev.round;
+            if (newRound > prev.totalRounds && nextTurn === 0) {
+                setTimeout(() => setScreen("end"), 400);
+                return {...prev, vals, hands, target, log, phase:'game-over', round: newRound};
+            }
 
-        if (newRound > prev.totalRounds && nextTurn === 0) {
-            setTimeout(() => setScreen('end'), 400);
-            return {...prev, vals, hands, log, phase:'game-over', round: newRound};
-        }
-
-        const phase = nextTurn === 0 ? 'player-plan' : 'ai-turn';
-        const nextLog = nextTurn === 0 ? log + ' — Your turn!' : log;
-        return { ...prev, vals, hands, log: nextLog, turnIndex: nextTurn,
-            round: newRound, phase, queuedPlays: [] };
+        const phase = nextTurn === 0 ? "player-plan" : "ai-turn";
+        return {...prev, vals, hands, target, log: nextTurn === 0 ? log + " — Your turn!" : log, 
+            turnIndex: nextTurn, round: newRound, phase, queuedPlays: []};
         });
+    }
+
+    // builds a list of plays: {cardIdx, targetPlayerIdx} from player's perspective
+    // returns {steps, finalVals, finalTarget, newHands, summary}
+    function buildSteps(plays, hands, vals, target, playerIdx, isAi) {
+        let runVals = [...vals];
+        let runTarget = target;
+        let nextHands = hands;
+        const steps = [];
+        const summary = [];
+
+        plays.forEach((play, i) => {
+            const card = hands[playerIdx][play.cardIdx];
+            nextHands = replaceCard(nextHands, playerIdx, play.cardIdx);
+            if (card.type === "target") {
+                const newTarget = card.fn(runTarget);
+                runTarget = newTarget;
+                steps.push({label: card.label, type: "target", isAi, newTarget});
+                summary.push(`${i+1} ${card.label}: target ${target} → ${newTarget}`);
+            } else if (card.type === "all") {
+                const targets = [];
+                runVals.forEach((v,idx) => {
+                    const newVal = card.fn(v);
+                    targets.push({targetIdx: idx, newVal: newVal});
+                    summary.push(`${i+1} ${card.label} on ${idx}: ${v} → ${newVal}`)
+                    runVals[idx] = newVal;
+                });
+                steps.push({label: card.label, type: "all", isAi, targets});
+            } else if (card.type === "single") {
+                const targetIdx = play.targetPlayerIdx;
+                const oldVal = runVals[targetIdx];
+                const newVal = card.fn(oldVal);
+                runVals[targetIdx] = newVal;
+                steps.push({label: card.label, type: "single", isAi, targets: [{targetIdx: targetIdx, newVal: newVal}]});
+                summary.push(`${i+1} ${card.label} on ${targetIdx}: ${oldVal} → ${newVal}`);
+            }
+        });
+        return {steps, finalVals: runVals, finalTarget: runTarget, newHands: nextHands, summary};
     }
 
     // handles the behaviour when player is dragging cards during their turn
@@ -249,102 +319,76 @@ export default function Main() {
             if (prev.queuedPlays.some(p => p.cardIdx === cardIdx)) return prev;
 
             const card = prev.hands[0][cardIdx];
-            const who = targetIdx === 0 ? "yourself" : prev.names[targetIdx];
-            const nextQueue = [...prev.queuedPlays, { cardIdx, targetIdx }];
-
-            return {
-                ...prev,
-                queuedPlays: nextQueue,
-                log: `Queued ${nextQueue.length}/${prev.cardsPerTurn}: "${card.label}" -> ${who}`,
-            };
+            const effectiveTarget = (card.type === "all" || card.type === "target") ? -1 : targetIdx;
+            const who = effectiveTarget === -1 ? (card.type === "target" ? "target" : "all") : (effectiveTarget === 0 ? "yourself" : prev.names[effectiveTarget]);
+            const nextQueue = [...prev.queuedPlays, {cardIdx: cardIdx, targetPlayerIdx: effectiveTarget }];
+            return {...prev, queuedPlays: nextQueue, log: `Queued ${nextQueue.length}/${prev.cardsPerTurn}: "${card.label}" -> ${who}`};
         });
     }
 
     function handleUnqueuePlay(queueIdx) {
         if (!gs || gs.phase !== "player-plan") return;
         setGs(prev => {
-            if (prev.phase !== "player-plan") return prev;
             const nextQueue = prev.queuedPlays.filter((_, i) => i !== queueIdx);
-            return {
-                ...prev,
-                queuedPlays: nextQueue,
-                log: nextQueue.length === 0
-                    ? "Queue cleared. Drag cards onto player profiles to plan this turn."
-                    : `Queue updated (${nextQueue.length}/${prev.cardsPerTurn}).`,
-            };
+            return {...prev, queuedPlays: nextQueue, log: nextQueue === 0 ? "Queue cleared." : `Queue updated (${nextQueue.length}/${prev.cardsPerTurn}).`};
         });
     }
 
     function handleClearQueue() {
         if (!gs || gs.phase !== "player-plan") return;
-        setGs(prev => ({ ...prev, queuedPlays: [], log: "Queue cleared. Drag cards onto player profiles to plan this turn." }));
+        setGs(prev => ({ ...prev, queuedPlays: [], log: "Queue cleared. Drag cards onto player profiles to plan this turn."}));
     }
 
     function handleResolveQueue() {
         if (!gs || gs.phase !== "player-plan" || gs.queuedPlays.length === 0) return;
-
-        const queued = gs.queuedPlays;
-        let runningVals = [...gs.vals];
-        let newHands = gs.hands;
-        const steps = [];
-        const summary = [];
-
-        queued.forEach((play, i) => {
-            const card = gs.hands[0][play.cardIdx];
-            const oldVal = runningVals[play.targetIdx];
-            const nextVal = card.fn(oldVal);
-            runningVals[play.targetIdx] = nextVal;
-            newHands = replaceCard(newHands, 0, play.cardIdx, gs.round);
-            steps.push({type: card.type, label: card.label, isAi: false, targetIdx: play.targetIdx, newVal: nextVal });
-            const who = play.targetIdx === 0 ? "yourself" : gs.names[play.targetIdx];
-            summary.push(`${i + 1}) ${card.label} on ${who}: ${oldVal} -> ${nextVal}`);
-        });
-
-        const finalVals = runningVals;
-        const msg = `You resolved ${queued.length} card(s): ${summary.join(" | ")}`;
-
+        const {steps, finalVals, finalTarget, newHands, summary} = buildSteps(gs.queuedPlays, gs.hands, gs.vals, gs.target, 0, false);
+        const msg = `You played: ${summary.join(" | ")}`;
         const startVals = [...gs.vals];
-        setGs(prev => ({ ...prev, phase: "player-resolving", queuedPlays: [] }));
-        setLiveVals(startVals);
+        const startTarget = gs.target;
 
-        playSequence(steps, gs.numPlayers, startVals, () => {
-            resolveAfterMove(finalVals, newHands, msg, (v,h,l) => advanceTurn(v,h,l));
+        setGs(prev => ({...prev, phase: "player-resolving", queuedPlays: []}));
+        setLiveVals(startVals);
+        setLiveTarget(startTarget);
+
+        playSequence(steps, gs.numPlayers, startVals, startTarget, (fv,ft) => {
+            resolveAfterMove(fv, ft, newHands, msg, (v,t,h,l) => advanceTurn(v,t,h,l));
         });
     }
 
     // AI takes its turn, with a slight delay to simulate thinking
     useEffect(() => {
         if (!gs || gs.phase !== "ai-turn") return;
-        timerRef.current = setTimeout(() => {
+        timerRef.current = setTimeout(async () => {
             const ai = gs.turnIndex;
             const count = gs.cardsPerTurn;
-            let runningVals = [...gs.vals];
-            let nextHands = gs.hands;
-            const steps = [];
-            const summary = [];
+            const plays = [];
+            let tempHands = gs.hands;
+            let tempVals = [...gs.vals];
+            let tempTarget = gs.target;
 
-            for (let i = 0; i < count; i += 1) {
-                const move = aiChooseMove(ai, nextHands, runningVals, gs.target);
-                const card = nextHands[ai][move.cardIdx];
-                const oldVal = runningVals[move.targetPlayerIdx];
-                const newVal = card.fn(oldVal);
-                runningVals[move.targetPlayerIdx] = newVal;
-                nextHands = replaceCard(nextHands, ai, move.cardIdx, gs.round);
-                steps.push({type: card.type, label: card.label, isAi: true, targetIdx: move.targetPlayerIdx, newVal});
-                const who = move.targetPlayerIdx === ai ? "itself" : gs.names[move.targetPlayerIdx];
-                summary.push(`${i + 1}) ${card.label} on ${who}: ${oldVal} -> ${newVal}`);
+            for (let i = 0; i < count; i++) {
+                const move = aiChooseMove(ai, tempHands, tempVals, tempTarget);
+                const card = tempHands[ai][move.cardIdx];
+                if (card.type === "target") {
+                    tempTarget = card.fn(tempTarget);
+                } else if (card.type === "all") {
+                    tempVals = tempVals.map((v, idx) => card.fn(v));
+                } else if (card.type === "single") {
+                    tempVals[move.targetPlayerIdx] = card.fn(tempVals[move.targetPlayerIdx]);
+                }
+                plays.push({cardIdx: move.cardIdx, targetPlayerIdx: move.targetPlayerIdx ?? -1});
             }
 
-            const finalVals = runningVals;
+            const {steps, finalVals, finalTarget, newHands, summary} = buildSteps(plays, gs.hands, gs.vals, gs.target, ai, true);
             const msg = `${gs.names[ai]} resolved ${count} card(s): ${summary.join(" | ")}`;
-
             const startVals = [...gs.vals];
+
             setLiveVals(startVals);
-            playSequence(steps, gs.numPlayers, startVals, () => {
-                resolveAfterMove(finalVals, nextHands, msg, (v,h,l) => advanceTurn(v,h,l));
+            setLiveTarget(gs.target);
+            playSequence(steps, gs.numPlayers, startVals, gs.target, (fv, ft) => {
+                resolveAfterMove(fv, ft, newHands, msg, (v,t,h,l) => advanceTurn(v,t,h,l));
             });
         }, AI_THINK_MS);
-
         return () => clearTimeout(timerRef.current);
     }, [gs?.phase, gs?.turnIndex]);
 
@@ -356,102 +400,70 @@ export default function Main() {
     return (
         <>
             <style>{GLOBAL_CSS}</style>
-            {screen === 'setup' && <SetupScreen onStart={handleStart} />}
-            {screen === 'game'  && gs && <GameScreen gs={gs} pulsing={pulsing}
+            {screen === "setup" && <SetupScreen onStart={handleStart} />}
+            {screen === "game"  && gs && <GameScreen gs={gs} pulsing={pulsing} targetPulsing = {targetPulsing}
                 onQueuePlay={handleQueuePlay} onUnqueuePlay={handleUnqueuePlay}
                 onClearQueue={handleClearQueue} onResolveQueue={handleResolveQueue}
-                activeCard={activeCard} liveVals={liveVals} />}
-            {screen === 'end'   && gs && <EndScreen gs={gs} onBack={()=>setScreen('setup')} />}
+                activeCard={activeCard} liveVals={liveVals} liveTarget={liveTarget}/>}
+            {screen === "end"   && gs && <EndScreen gs={gs} onBack={() => setScreen("setup")} />}
         </>
     );
 }
 
-function GameScreen({gs, pulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onResolveQueue, activeCard, liveVals}){
-    const isPlanning = gs.turnIndex === 0 && gs.phase === 'player-plan';
+function GameScreen({gs, pulsing, targetPulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onResolveQueue, activeCard, liveVals, liveTarget}){
+    const isPlanning = gs.turnIndex === 0 && gs.phase === "player-plan";
     const queueFull = gs.queuedPlays.length >= gs.cardsPerTurn;
     const usedCardIdx = new Set(gs.queuedPlays.map(p => p.cardIdx));
     const displayVals = liveVals ?? gs.vals;
+    const displayTarget = liveTarget ?? gs.target;
+
     const queueByTarget = gs.queuedPlays.reduce((acc, play, queueIdx) => {
-        if (!acc[play.targetIdx]) acc[play.targetIdx] = [];
-        acc[play.targetIdx].push({ queueIdx, label: gs.hands[0][play.cardIdx].label });
+        const key = play.targetPlayerIdx === -1 ? "special" : play.targetPlayerIdx;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push({queueIdx, label: gs.hands[0][play.cardIdx].label});
         return acc;
     }, {});
-    function getAnimation(card) {
-        if (card.phase === "pop") {
-            return `cardPlay ${CARD_POP_MS}ms cubic-bezier(.34,1.56,.64,1) both`; 
-        }
-        if (card.phase === "fly") {
-            return `flyToSeat ${CARD_FLY_MS}ms cubic-bezier(.22,.61,.36,1) both`;
-        }
-        if (card.phase === "fade") {
-            return `fadeOut ${CARD_FADE_MS}ms cubic-bezier(.22,.61,.36,1) both`;
-        }
-        return "none";
-    }
+
     return (
-        <div style={{maxWidth:660,margin:'0 auto',padding:'1rem',fontFamily:"'DM Mono',monospace",
-        background:C.bg,minHeight:'100vh',color:C.text}}>
+        <div style={{maxWidth:660,margin: "0 auto",padding: "1rem", fontFamily:"'DM Mono',monospace",
+        background: C.bg, minHeight:"100vh", color: C.text}}>
 
-        {/* Header */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-            <h1 style={{fontFamily:"'Cinzel',serif",fontSize:18,color:C.gold,letterSpacing:'.05em'}}>Order of Operations</h1>
-            <div style={{fontSize:11,color:C.textMuted,textAlign:'right',letterSpacing:'.08em'}}>
-            Round {gs.round} / {gs.totalRounds}<br/>
-            <span style={{color:C.textFaint,fontSize:10}}>{gs.totalRounds - gs.round} rounds left</span>
+            {/* Header */}
+            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem"}}>
+                <h1 style={{fontFamily:"'Cinzel',serif", fontSize:18, color:C.gold, letterSpacing:".05em"}}>Order of Operations</h1>
+                <div style={{fontSize:11,color:C.textMuted,textAlign:'right',letterSpacing:'.08em'}}>
+                    Round {gs.round} / {gs.totalRounds}<br/>
+                    <span style={{color:C.textFaint, fontSize:10}}>{gs.totalRounds - gs.round} rounds left</span>
+                </div>
             </div>
-        </div>
 
-        {/* Circular table */}
-        <div style={{position:'relative',width:'min(100%,480px)',aspectRatio:'1',margin:'0 auto 1rem'}}>
+        {/* Table */}
+        <div style={{position:"relative", width:"min(100%,480px)", aspectRatio:"1", margin:"0 auto 1rem"}}>
             {/* felt surface — two-layer wood ring via border + boxShadow */}
-            <div style={{position:'absolute',inset:0,borderRadius:'50%',
-            background:`radial-gradient(circle at 40% 35%,${C.feltGradA},${C.feltGradB})`,
-            border:`4px solid #8c4d22`,
-            boxShadow:`0 0 0 4px #2a0f04, 0 10px 40px rgba(0,0,0,.85), inset 0 0 24px rgba(0,0,0,.35)`,
-            display:'flex',alignItems:'center',justifyContent:'center',zIndex:1}}>
+            <div style={{position:"absolute", inset:0, borderRadius:"50%",
+                background:`radial-gradient(circle at 40% 35%,${C.feltGradA},${C.feltGradB})`,
+                border:`4px solid #8c4d22`,
+                boxShadow:`0 0 0 4px #2a0f04, 0 10px 40px rgba(0,0,0,.85), inset 0 0 24px rgba(0,0,0,.35)`,
+                display:'flex', alignItems:'center', justifyContent:'center', zIndex:1}}>
 
-            {/* Center: target + rounds */}
-            <div style={{width:'25%',aspectRatio:'1',borderRadius:'50%',
-                background:`radial-gradient(circle,${C.feltInnerA},${C.feltInnerB})`,border:`1px solid ${C.feltInnerBorder}`,
-                display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,position:'relative'}}>
-                <div style={{fontSize:8,letterSpacing:'.2em',textTransform:'uppercase',color:C.feltLabel}}>Target</div>
-                <div style={{fontSize:32,fontWeight:700,color:C.text}}>{gs.target}</div>
-                <div style={{fontSize:9,color:C.feltSubLabel,letterSpacing:'.1em'}}>{gs.totalRounds - gs.round + 1} left</div>
-            </div>
+                {/* Center: target + rounds */}
+                <div style={{width:'25%', aspectRatio:'1', borderRadius:'50%',
+                    background:`radial-gradient(circle,${C.feltInnerA},${C.feltInnerB})`, border:`1px solid ${C.feltInnerBorder}`,
+                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+                    animation: targetPulsing ? "targetPop .5s ease" : "none"}}>
+                    <div style={{fontSize:8, letterSpacing:".2em", textTransform:"uppercase", color:C.feltLabel}}>Target</div>
+                    <div style={{fontSize:30, fontWeight:700, color: targetPulsing ? "#1a8fd4" : C.text, transition: "color .3s"}}>{displayTarget}</div>
+                    <div style={{fontSize:9, color:C.feltSubLabel, letterSpacing:".1em"}}>{gs.totalRounds - gs.round + 1} left</div>
+                </div>
             </div>
 
             {/* Single active card: pops at center then flies to target */}
             {activeCard && (() => {
-                const { suit, suitColor } = parseCard(activeCard.label);
                 return (
-                    <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:12}}>
-                        {/* handles centering */}
-                        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)'}}>
-                            <div style = {{
-                                width:58,
-                                height:84,
-                                borderRadius:8,
-                                background:'#f7f3e5',
-                                border:`2px solid ${activeCard.isAi ? C.red : C.gold}`,
-                                display:'flex',
-                                flexDirection:'column',
-                                alignItems:'center',
-                                justifyContent:'center',
-                                boxShadow:`inset 0 0 0 1px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.65)`,
-                                position: "relative",
-                                animation: getAnimation(activeCard),
-                                '--dx': activeCard.dx,
-                                '--dy': activeCard.dy,
-                            }}>
-                                <div style={{position:'absolute',top:4,left:5,lineHeight:1.15,textAlign:'left'}}>
-                                    <div style={{fontSize:12,color:suitColor}}>{suit}</div>
-                                </div>
-                                <div style={{fontSize:20,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.label}</div>
-                                <div style={{fontSize:10,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{activeCard.type}</div>
-                                <div style={{position:'absolute',bottom:4,right:5,lineHeight:1.15,textAlign:'right',transform:'rotate(180deg)'}}>
-                                    <div style={{fontSize:12,color:suitColor}}>{suit}</div>
-                                </div>
-                            </div>
+                    <div style={{position:"absolute", inset:0, pointerEvents:"none", zIndex:12}}>
+                        <div style={{position:"absolute", left:"50%", top:"50%", transform:"translate(-50%, -50%)"}}>
+                            <CardPip label = {activeCard.label} type = {activeCard.type} isAi = {activeCard.isAi}
+                            phase = {activeCard.phase} dx = {activeCard.dx} dy = {activeCard.dy}/>
                         </div>
                     </div>
                 );
@@ -459,183 +471,171 @@ function GameScreen({gs, pulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onRe
 
             {/* Player seats */}
             {gs.names.map((name, i) => {
-            const iconPos = seatPosition(i, gs.numPlayers, 49);
-            const infoPos = seatPosition(i, gs.numPlayers, 35);
-            const isActive = gs.turnIndex === i && gs.phase !== 'game-over';
-            const isHuman  = i === 0;
-            const accent   = isHuman ? C.gold : C.red;
-            const canTarget = isPlanning && !queueFull;
-            const targetBorder = canTarget ? accent : (isActive ? accent : C.seatIdleBorder);
-            return (
-                <React.Fragment key={i}>
-                {/* Large invisible drop zone centred on icon */}
-                <div style={{position:'absolute',transform:'translate(-50%,-50%)',
-                left:`${iconPos.x}%`,top:`${iconPos.y}%`,width:150,height:150,zIndex:4,
-                cursor: canTarget ? 'pointer' : 'default',borderRadius:'50%'}}
-                onDragOver={canTarget ? (e) => e.preventDefault() : undefined}
-                onDrop={canTarget ? (e) => {
-                    e.preventDefault();
-                    const cardIdx = Number(e.dataTransfer.getData('text/plain'));
-                    if (Number.isInteger(cardIdx)) onQueuePlay(cardIdx, i);
-                } : undefined}
-                role={canTarget ? 'button' : undefined}
-                tabIndex={canTarget ? 0 : undefined}
-                aria-label={canTarget ? `Drop card on ${name}` : undefined} />
-                {/* Emoji icon on the rail */}
-                <div style={{position:'absolute',transform:'translate(-50%,-50%)',
-                left:`${iconPos.x}%`,top:`${iconPos.y}%`,zIndex:5,
-                width:44,height:44,borderRadius:'50%',
-                display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,
-                background:C.surface,border:`3px solid ${targetBorder}`,
-                boxShadow:`0 0 0 2px #2a0f04`,
-                animation: (isActive || canTarget) ? 'glow 1.5s ease infinite' : 'none',
-                transition:'border-color .3s',pointerEvents:'none'}}>
-                    {gs.emojis[i]}
-                </div>
-                {/* Info chip inside the felt */}
-                <div style={{position:'absolute',transform:'translate(-50%,-50%)',
-                left:`${infoPos.x}%`,top:`${infoPos.y}%`,zIndex:3,
-                textAlign:'center',pointerEvents:'none',minWidth:48}}>
-                    <div style={{fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',color:C.textMuted,lineHeight:1.3}}>{name}</div>
-                    <div style={{fontSize:19,fontWeight:700,lineHeight:1,color: isHuman?C.gold:C.red,
-                        animation: pulsing[i] ? 'pulse .4s ease' : 'none'}}>{displayVals[i]}</div>
-                    <div style={{display:'flex',gap:2,justifyContent:'center',flexWrap:'wrap',marginTop:2}}>
-                        {(queueByTarget[i] ?? []).map(entry => (
-                            <span key={`queued-${i}-${entry.queueIdx}`}
-                                title="Click to remove"
-                                style={{fontSize:7,padding:'1px 3px',borderRadius:999,
-                                background:C.goldDim,border:`1px solid ${C.gold}`,color:C.gold,
-                                pointerEvents:'auto',cursor:'pointer'}}
-                                onClick={isPlanning ? () => onUnqueuePlay(entry.queueIdx) : undefined}
-                            >{entry.label}</span>
-                        ))}
+                const iconPos = seatPosition(i, gs.numPlayers, 49);
+                const infoPos = seatPosition(i, gs.numPlayers, 35);
+                const isActive = gs.turnIndex === i && gs.phase !== "game-over";
+                const isHuman = i === 0;
+                const accent = isHuman ? C.gold : C.red;
+                const canTarget = isPlanning && !queueFull;
+                const targetBorder = canTarget ? accent : (isActive ? accent : C.seatIdleBorder);
+                return (
+                    <div key={i}>
+                        {/* Large invisible drop zone centred on icon */}
+                        <div style={{position:"absolute", transform:"translate(-50%,-50%)", left:`${iconPos.x}%`, top:`${iconPos.y}%`,
+                            width:150, height:150, zIndex:4, cursor: canTarget ? "pointer" : "default", borderRadius:"50%"}}
+                            onDragOver={canTarget ? e => e.preventDefault() : undefined}
+                            onDrop={canTarget ? e => {
+                                e.preventDefault();
+                                const cardIdx = Number(e.dataTransfer.getData("text/plain"));
+                                if (Number.isInteger(cardIdx)) onQueuePlay(cardIdx, i);
+                            } : undefined} />
+
+                        {/* Emoji icon */}
+                        <div style={{position:"absolute", transform:"translate(-50%,-50%)",
+                            left:`${iconPos.x}%`, top:`${iconPos.y}%`, zIndex:5,
+                            width:44, height:44, borderRadius:"50%",
+                            display:"flex", alignItems:"center", justifyContent:"center", fontSize:20,
+                            background:C.surface, border:`3px solid ${targetBorder}`,
+                            boxShadow:`0 0 0 2px #2a0f04`,
+                            animation: (isActive || canTarget) ? "glow 1.5s ease infinite" : "none",
+                            transition:"border-color .3s", pointerEvents:"none"}}>
+                            {gs.emojis[i]}
+                        </div>
+
+                        {/* Info chip */}
+                        <div style={{position:"absolute", transform:"translate(-50%,-50%)",
+                            left:`${infoPos.x}%`, top:`${infoPos.y}%`, zIndex:3,
+                            textAlign:"center", pointerEvents:"none", minWidth:48}}>
+                            <div style={{fontSize:8, letterSpacing:".1em", textTransform:"uppercase", color:C.textMuted, lineHeight:1.3}}>{name}</div>
+                            <div style={{fontSize:19, fontWeight:700, lineHeight:1, color: isHuman ? C.gold : C.red,
+                                animation: pulsing[i] ? "pulse .4s ease" : "none"}}>{displayVals[i]}</div>
+                            <div style={{display:"flex", gap:2, justifyContent:"center", flexWrap:"wrap", marginTop:2}}>
+                                {(queueByTarget[i] ?? []).map(entry => (
+                                    <span key={entry.queueIdx} title="Click to remove"
+                                        style={{fontSize:7, padding:"1px 3px", borderRadius:999, background:C.goldDim, 
+                                            border:`1px solid ${C.gold}`, color:C.gold, pointerEvents:"auto", cursor:"pointer"}}
+                                        onClick={isPlanning ? () => onUnqueuePlay(entry.queueIdx) : undefined}>{entry.label}</span>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                </div>
-                </React.Fragment>
-            );
+                );
             })}
+
+            {/* Special queued cards near center */}
+            {(queueByTarget["special"] ?? []).length > 0 && (
+            <div style={{position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, 58%)", zIndex: 6,
+                display: "flex", gap: 3, flexWrap: "wrap", justifyContent: "center"}}>
+                {(queueByTarget["special"] ?? []).map(entry => (
+                <span key={entry.queueIdx} title="Click to remove"
+                    style={{fontSize: 7, padding: "1px 4px", borderRadius: 999, background: "rgba(122,47,212,0.2)",
+                    border: "1px solid #7a2fd4", color: "#9a5fd4", pointerEvents: "auto", cursor: "pointer"}}
+                    onClick={isPlanning ? () => onUnqueuePlay(entry.queueIdx) : undefined}>{entry.label}</span>
+                ))}
+            </div>
+            )}
         </div>
 
         {/* Log */}
-        <div style={{background:C.surface,border:`1px solid ${C.borderFaint}`,borderRadius:6,
-            padding:'9px 14px',fontSize:12,color:C.logText,minHeight:36,marginBottom:'1rem',fontStyle:'italic'}}
+        <div style={{background:C.surface, border:`1px solid ${C.borderFaint}`, borderRadius:6,
+            padding:'9px 14px', fontSize:12, color:C.logText, minHeight:36, marginBottom:"1rem", fontStyle:"italic"}}
             aria-live="polite">{gs.log}</div>
 
-        {/* Player hand */}
-        {gs.turnIndex === 0 && gs.phase !== 'game-over' && (
+        {/* Hand */}
+        {gs.turnIndex === 0 && gs.phase !== "game-over" && (
             <>
-            <div style={{fontSize:9,letterSpacing:'.22em',textTransform:'uppercase',color:C.textFaint,marginBottom:8}}>Your hand</div>
-            <div
-                style={{display:'flex',gap:8,flexWrap:'nowrap',overflowX:'auto',paddingBottom:6,marginBottom:'1rem',touchAction:'pan-x'}}
-                onDragOver={isPlanning ? (e) => e.preventDefault() : undefined}
-                onDrop={isPlanning ? (e) => {
-                    const type = e.dataTransfer.getData("application/x-queue-remove");
-                    const idx = Number(e.dataTransfer.getData("text/plain"));
-                    if (type === "queue" && Number.isInteger(idx)) {
-                        onUnqueuePlay(idx);
-                    }
-                } : undefined}
-            >
-                {gs.hands[0].map((card, i) => {
-                const { suit, suitColor } = parseCard(card.label);
-                const isQueued   = usedCardIdx.has(i);
-                const isDisabled = !isPlanning || isQueued || queueFull;
-                return (
-                <button key={i}
-                    draggable={isPlanning && !isQueued && !queueFull}
-                    onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", String(i));
-                        e.dataTransfer.effectAllowed = "move";
-                    }}
-                    disabled={isDisabled}
-                    style={{
-                        position:'relative',
-                        background: '#f7f3e5',
-                        border:`2px solid ${isQueued ? C.gold : '#b8a070'}`,
-                        borderRadius:8,
-                        width:58, height:84,
-                        cursor: isDisabled ? 'not-allowed' : 'grab',
-                        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                        animation:`dealIn .35s ease ${i*55}ms both`,
-                        transform: isQueued ? 'translateY(-10px)' : 'none',
-                        opacity: isDisabled && !isQueued ? 0.5 : 1,
-                        transition:'all .15s',
-                        boxShadow: isQueued
-                            ? `0 8px 20px rgba(212,168,75,0.45), inset 0 0 0 1px rgba(0,0,0,0.07)`
-                            : `0 4px 14px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.07)`,
-                        flexShrink:0,
-                    }}
-                >
-                    <div style={{position:'absolute',top:4,left:5}}>
-                        <div style={{fontSize:12,color:suitColor,lineHeight:1}}>{suit}</div>
-                    </div>
-                    <div style={{fontSize:20,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{card.label}</div>
-                    <div style={{fontSize:10,fontWeight:800,color:suitColor,fontFamily:"'DM Mono',monospace",letterSpacing:'-0.02em',lineHeight:1,textAlign:'center'}}>{card.type}</div>
-                    <div style={{position:'absolute',bottom:4,right:5,transform:'rotate(180deg)'}}>
-                        <div style={{fontSize:12,color:suitColor,lineHeight:1}}>{suit}</div>
-                    </div>
-                </button>
-                );
-                })}
-            </div>
+                <div style={{fontSize:9, letterSpacing:'.22em', textTransform:'uppercase', color:C.textFaint, marginBottom:8}}>Your hand</div>
+                <div style={{display:'flex', gap:8, flexWrap:'nowrap', overflowX:'auto', paddingBottom:6, marginBottom:'1rem', touchAction:'pan-x'}}
+                    onDragOver={isPlanning ? e => e.preventDefault() : undefined}
+                    onDrop={isPlanning ? e => {
+                        const type = e.dataTransfer.getData("application/x-queue-remove");
+                        const idx = Number(e.dataTransfer.getData("text/plain"));
+                        if (type === "queue" && Number.isInteger(idx)) onUnqueuePlay(idx);
+                    } : undefined}>
+                    {gs.hands[0].map((card, i) => {
+                        const tc = cardTypeColors(card.type);
+                        const isQueued = usedCardIdx.has(i);
+                        const isDisabled = !isPlanning || isQueued || queueFull;
+                        const badgeColor = card.type === "all" ? "#7a2fd4" : card.type === "target" ? "#1a8fd4" : C.gold;
 
-            {isPlanning && (
-                <div style={{marginBottom:'1rem',background:C.surface,border:`1px solid ${C.borderFaint}`,borderRadius:8,padding:'10px 12px'}}>
-                    <div style={{fontSize:10,color:C.textMuted,letterSpacing:'.08em',textTransform:'uppercase',marginBottom:8}}>
-                        Turn Queue ({gs.queuedPlays.length}/{gs.cardsPerTurn})
-                    </div>
-                    {gs.queuedPlays.length === 0 && (
-                        <div style={{fontSize:10,color:C.hintText,letterSpacing:'.04em',marginBottom:8}}>
-                            Drag cards onto player profiles. Press Ready to resolve all queued cards in order.
-                        </div>
-                    )}
-                    {gs.queuedPlays.map((play, idx) => (
-                        <div key={`${play.cardIdx}-${idx}`} style={{fontSize:11,color:C.textMuted,marginBottom:4,display:'flex',alignItems:'center',gap:8}}>
-                            <span
-                                draggable
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/x-queue-remove", "queue");
-                                    e.dataTransfer.setData("text/plain", String(idx));
+                        return (
+                            <button key={i}
+                                draggable={isPlanning && !isQueued && !queueFull}
+                                onDragStart={e => {
+                                    e.dataTransfer.setData("text/plain", String(i));
+                                    e.dataTransfer.effectAllowed = "move";
                                 }}
-                                title="Drag back to hand or click x to remove."
-                                style={{fontSize:10,padding:'1px 5px',borderRadius:999,border:`1px solid ${C.border}`,color:C.textMuted,cursor:'grab'}}
-                            >
-                                drag
-                            </span>
-                            {idx + 1}. {gs.hands[0][play.cardIdx].label}{" -> "}{play.targetIdx === 0 ? 'You' : gs.names[play.targetIdx]}
-                            <button
-                                onClick={() => onUnqueuePlay(idx)}
-                                style={{marginLeft:'auto',border:'none',background:'transparent',color:C.textMuted,cursor:'pointer',fontWeight:700}}
-                                aria-label="Remove queued card"
-                            >
-                                x
+                                disabled={isDisabled}
+                                style={{
+                                    position:'relative',
+                                    background: tc.bg,
+                                    border:`2px solid ${isQueued ? tc.border : '#b8a070'}`,
+                                    borderRadius:8,
+                                    width:58, height:84,
+                                    cursor: isDisabled ? 'not-allowed' : 'grab',
+                                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                                    animation:`dealIn .35s ease ${i*55}ms both`,
+                                    transform: isQueued ? 'translateY(-10px)' : 'none',
+                                    opacity: isDisabled && !isQueued ? 0.5 : 1,
+                                    transition:'all .15s',
+                                    boxShadow: isQueued
+                                        ? `0 8px 20px rgba(212,168,75,0.45), inset 0 0 0 1px rgba(0,0,0,0.07)`
+                                        : `0 4px 14px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.07)`,
+                                    flexShrink:0,
+                                }}>
+                                <div style={{fontSize:20, fontWeight:800, color:tc.suit, fontFamily:"'DM Mono',monospace", letterSpacing:"-0.02em", lineHeight:1, textAlign:"center"}}>{card.label}</div>
+                                <div style={{fontSize: 9, color: badgeColor, fontWeight: 700, marginTop: 3, background: `${badgeColor}22`, borderRadius: 99, padding: "1px 5px", letterSpacing: ".05em"}}>{card.type}</div>
                             </button>
-                        </div>
-                    ))}
-                    <div style={{display:'flex',gap:8,marginTop:10}}>
-                        <button onClick={onResolveQueue} disabled={gs.queuedPlays.length === 0}
-                            style={{padding:'8px 14px',borderRadius:8,border:'none',background:C.gold,color:C.bg,
-                            cursor: gs.queuedPlays.length === 0 ? 'not-allowed' : 'pointer',fontSize:11,fontWeight:700,
-                            fontFamily:"'DM Mono',monospace",opacity: gs.queuedPlays.length === 0 ? 0.45 : 1}}>
-                            Ready
-                        </button>
-                        <button onClick={onClearQueue} disabled={gs.queuedPlays.length === 0}
-                            style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.textMuted,
-                            cursor: gs.queuedPlays.length === 0 ? 'not-allowed' : 'pointer',fontSize:11,fontWeight:600,
-                            fontFamily:"'DM Mono',monospace",opacity: gs.queuedPlays.length === 0 ? 0.45 : 1}}>
-                            Clear
-                        </button>
-                    </div>
+                        );
+                    })}
                 </div>
-            )}
+
+                {isPlanning && (
+                    <div style={{marginBottom:'1rem', background:C.surface, border:`1px solid ${C.borderFaint}`, borderRadius:8, padding:'10px 12px'}}>
+                        <div style={{fontSize:10, color:C.textMuted, letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8}}>
+                            Turn Queue ({gs.queuedPlays.length}/{gs.cardsPerTurn})
+                        </div>
+                        {gs.queuedPlays.length === 0 && (
+                            <div style={{fontSize:10, color:C.hintText, letterSpacing:'.04em', marginBottom:8}}>
+                                Drag single cards onto players. ⚡ All and 🎯 Target cards auto-resolve — drop anywhere.
+                            </div>
+                        )}
+                        {gs.queuedPlays.map((play, idx) => {
+                            const card = gs.hands[0][play.cardIdx];
+                            const targetLabel = play.targetPlayerIdx === -1
+                            ? (card.type === "target" ? "target" : "all")
+                            : (play.targetPlayerIdx === 0 ? "yourself" : gs.names[play.targetPlayerIdx]);
+                            return (
+                            <div key={`${play.cardIdx}-${idx}`} style={{ fontSize: 11, color: C.textMuted, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                                <span draggable onDragStart={e => { e.dataTransfer.setData("application/x-queue-remove", "queue"); e.dataTransfer.setData("text/plain", String(idx)); }}
+                                title="Drag back to hand to remove."
+                                style={{ fontSize: 10, padding: "1px 5px", borderRadius: 999, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "grab" }}>drag</span>
+                                {idx + 1}. {card.label} → {targetLabel}
+                                <button onClick={() => onUnqueuePlay(idx)}
+                                style={{ marginLeft: "auto", border: "none", background: "transparent", color: C.textMuted, cursor: "pointer", fontWeight: 700 }}>x</button>
+                            </div>
+                            );
+                        })}
+                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                            <button onClick={onResolveQueue} disabled={gs.queuedPlays.length === 0}
+                            style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: C.gold, color: C.bg,
+                                cursor: gs.queuedPlays.length === 0 ? "not-allowed" : "pointer", fontSize: 11, fontWeight: 700,
+                                fontFamily: "'DM Mono',monospace", opacity: gs.queuedPlays.length === 0 ? 0.45 : 1 }}>Ready</button>
+                            <button onClick={onClearQueue} disabled={gs.queuedPlays.length === 0}
+                            style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.bg, color: C.textMuted,
+                                cursor: gs.queuedPlays.length === 0 ? "not-allowed" : "pointer", fontSize: 11, fontWeight: 600,
+                                fontFamily: "'DM Mono',monospace", opacity: gs.queuedPlays.length === 0 ? 0.45 : 1 }}>Clear</button>
+                        </div>
+                    </div>
+                )}
             </>
         )}
 
         {/* AI thinking indicator */}
         {gs.phase === 'ai-turn' && (
-            <div style={{display:'flex',gap:6,alignItems:'center',fontSize:12,color:C.textMuted,fontStyle:'italic'}}>
+            <div style={{display:'flex', gap:6, alignItems:'center', fontSize:12, color:C.textMuted, fontStyle:'italic'}}>
             {[0,1,2].map(d=>(
-                <div key={d} style={{width:5,height:5,borderRadius:'50%',background:C.textMuted,
+                <div key={d} style={{width:5, height:5, borderRadius:'50%', background:C.textMuted,
                 animation:`pulse .9s ease ${d*0.2}s infinite`}}/>
             ))}
             <span style={{marginLeft:4}}>{gs.names[gs.turnIndex]} is thinking…</span>
@@ -666,8 +666,8 @@ function EndScreen({gs, onBack}) {
                 <div style={{fontSize:18}}>{gs.emojis[r.playerIdx]}</div>
                 <div style={{flex:1,fontSize:13,fontWeight:600}}>{gs.names[r.playerIdx]}</div>
                 <div style={{textAlign:'right'}}>
-                <div style={{fontSize:20,fontWeight:700,color:rank===0?C.gold:C.text}}>{r.value}</div>
-                <div style={{fontSize:10,color:C.textMuted}}>{r.distance===0?'✓ exact!':r.distance+' away'}</div>
+                    <div style={{fontSize:20,fontWeight:700,color:rank===0?C.gold:C.text}}>{r.value}</div>
+                    <div style={{fontSize:10,color:C.textMuted}}>{r.distance===0?'✓ exact!':r.distance+' away'}</div>
                 </div>
             </div>
             ))}

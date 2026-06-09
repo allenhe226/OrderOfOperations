@@ -26,6 +26,13 @@ export const C = {
   hintText:        "#5a3518",  // helper hint shown during target selection
   glowGoldLow:     "rgba(212,168,75,.2)",   // low-intensity glow keyframe value
   glowGoldHigh:    "rgba(212,168,75,.5)",   // high-intensity glow keyframe value
+  
+  // card colours for the different card types
+  typeColors: {
+    single: {border: "#d4a84b", bg: "#f7f3e5", suit: "#c0392b"},
+    all:    {border: "#7a2fd4", bg: "#f0ebff", suit: "#5a12a8"},
+    target: {border: "#1a8fd4", bg: "#e6f4ff", suit: "#0a5a9c"},
+  }
 };
 
 // layout of application

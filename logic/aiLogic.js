@@ -1,36 +1,53 @@
-// function that scores how good a move is depending on the old and new values
-function score(newVal, oldVal, target) {
-    const oldScore = Math.abs(oldVal - target);
-    const newScore = Math.abs(newVal - target);
-    return oldScore - newScore;
-}
-
 // greedy function that makes the AI choose the best local move
 export function aiChooseMove(aiIdx, hands, vals, target){
-    const hand = hands[aiIdx];
-    const myVal = vals[aiIdx];
-    let best = -Infinity, bestCard = 0, bestTarget = aiIdx, closestDist = Infinity;
+    const aiHand = hands[aiIdx];
+    const aiVal = vals[aiIdx];
+    let bestScore = -Infinity;
+    let bestMove = { cardIdx: 0, targetPlayerIdx: aiIdx};
 
     // compares each card's score with itself and other people
-    hand.forEach((card, ci) => {
-        const selfScore = score(card.fn(myVal), myVal, target);
-        if (selfScore > best) {
-            best = selfScore;
-            bestCard = ci;
-            bestTarget = aiIdx;
+    aiHand.forEach((card, cardIdx) => {
+        if (card.type === "target") {
+            const newTarget = card.fn(target);
+            
+            // check if other players will reach target after move; if so, stop considering this
+            if (vals.includes(newTarget) && aiVal !== newTarget) {return;}
+
+            // checks improvement and assigns score
+            const selfScore = Math.abs(newTarget - aiVal) - Math.abs(target - aiVal);
+            if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};}
+            return;
         }
-        vals.forEach((v, pi) => {
-            if (pi === aiIdx) return;
-            const oppScore = -score(card.fn(v), v, target);
-            const curDist = Math.abs(v - target);
-            if (oppScore > best && curDist < closestDist) {
-                best = oppScore;
-                bestCard = ci;
-                bestTarget = pi;
-                closestDist = curDist;
+
+        if (card.type === "all") {
+            const newVal = card.fn(aiVal);
+            for (const [idx, v] of vals.entries()) {
+                if (idx === aiIdx) {continue};
+                if (target === card.fn(v)) {return;}
             }
-        })
+            const selfScore = Math.abs(target - newVal) - Math.abs(target - aiVal);
+            if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};}
+            return;
+        }
+
+        if (card.type === "single") { 
+            const newVal = card.fn(aiVal)
+            const selfScore = Math.abs(target - newVal) - Math.abs(target - aiVal);
+
+            if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: aiIdx};}
+            vals.forEach((val, playerIdx) => {
+                if (idx === aiIdx) return;
+
+                // get higher score for pushing opponents away from target
+                const closestDist = Infinity;
+                const dist = Math.abs(target - val);
+                const opponentScore = dist - Math.abs(target - card.fn(val));
+
+                // prioritize opponents closer to target
+                if (opponentScore >= bestScore && dist < closestDist) {bestScore = opponentScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: playerIdx};}
+            })
+        }
     });
     // return the best move for the AI
-    return {cardIdx: bestCard, targetPlayerIdx: bestTarget};
+    return bestMove;
 }
