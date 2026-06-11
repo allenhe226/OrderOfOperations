@@ -202,6 +202,7 @@ export default function Main() {
 
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
+            if (!step) continue;
 
             // determine card
             const isTargetCard = step.type === "target";
@@ -257,7 +258,6 @@ export default function Main() {
           setGs(prev => ({ ...prev, vals: newVals, hands: newHands, target: newTarget, decimalPlaces: newDP,
             log: logMsg + ` — ${exactIdx === 0 ? "You hit" : prev.names[exactIdx] + " hit"} the target exactly!`,
             phase: "game-over", earlyWinner: exactIdx}));
-          setTimeout(() => setScreen("end"), 600);
           return true;
         }
         nextFn(newVals, newTarget, newDP, newHands, logMsg);
@@ -269,13 +269,12 @@ export default function Main() {
             const nextTurn = (prev.turnIndex + 1) % prev.numPlayers;
             const newRound = nextTurn === 0 ? prev.round + 1 : prev.round;
             if (newRound > prev.totalRounds && nextTurn === 0) {
-                setTimeout(() => setScreen("end"), 400);
                 return {...prev, vals, hands, target, decimalPlaces: dp, log, phase:'game-over', round: newRound};
             }
 
-        const phase = nextTurn === 0 ? "player-plan" : "ai-turn";
-        return {...prev, vals, hands, target, decimalPlaces: dp, log: nextTurn === 0 ? log + " — Your turn!" : log, 
-            turnIndex: nextTurn, round: newRound, phase, queuedPlays: []};
+            const phase = nextTurn === 0 ? "player-plan" : "ai-turn";
+            return {...prev, vals, hands, target, decimalPlaces: dp, log: nextTurn === 0 ? log + " — Your turn!" : log, 
+                turnIndex: nextTurn, round: newRound, phase, queuedPlays: []};
         });
     }
 
@@ -328,7 +327,11 @@ export default function Main() {
 
     // AI takes its turn, with a slight delay to simulate thinking
     useEffect(() => {
-        if (!gs || gs.phase !== "ai-turn") return;
+        if (gs?.phase === "game-over") {
+            const t = setTimeout(() => setScreen("end"), 400);
+            return () => clearTimeout(t)
+        }
+        if (!gs || gs?.phase !== "ai-turn") return;
         timerRef.current = setTimeout(async () => {
             const ai = gs.turnIndex;
             const count = gs.cardsPerTurn;
@@ -378,11 +381,11 @@ export default function Main() {
         <>
             <style>{GLOBAL_CSS}</style>
             {screen === "setup" && <SetupScreen onStart={handleStart} />}
-            {screen === "game"  && gs && <GameScreen gs={gs} pulsing={pulsing} targetPulsing = {targetPulsing}
+            {screen === "game" && gs && <GameScreen gs={gs} pulsing={pulsing} targetPulsing = {targetPulsing}
                 onQueuePlay={handleQueuePlay} onUnqueuePlay={handleUnqueuePlay}
                 onClearQueue={handleClearQueue} onResolveQueue={handleResolveQueue}
                 activeCard={activeCard} liveVals={liveVals} liveTarget={liveTarget} liveDP={liveDP}/>}
-            {screen === "end"   && gs && <EndScreen gs={gs} onBack={() => setScreen("setup")} />}
+            {screen === "end" && gs && <EndScreen gs={gs} onBack={() => {setGs(null); setScreen("setup");}} />}
         </>
     );
 }
@@ -651,7 +654,7 @@ function EndScreen({gs, onBack}) {
             ))}
         </div>
 
-        <button onClick={onBack} style={{width:'100%',padding:13,background:C.gold,color:C.bg,border:'none',
+        <button onClick={() => {onBack();}} style={{width:'100%',padding:13,background:C.gold,color:C.bg,border:'none',
             borderRadius:10,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700,
             letterSpacing:'.12em',textTransform:'uppercase',cursor:'pointer'}}>
             Play Again

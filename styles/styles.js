@@ -29,9 +29,10 @@ export const C = {
   
   // card colours for the different card types
   typeColors: {
-    single: {border: "#d4a84b", bg: "#f7f3e5", suit: "#c0392b"},
-    all:    {border: "#7a2fd4", bg: "#f0ebff", suit: "#5a12a8"},
-    target: {border: "#1a8fd4", bg: "#e6f4ff", suit: "#0a5a9c"},
+    single:     {border: "#d4a84b", bg: "#f7f3e5", suit: "#c0392b"},
+    all:        {border: "#7a2fd4", bg: "#f0ebff", suit: "#5a12a8"},
+    target:     {border: "#1a8fd4", bg: "#e6f4ff", suit: "#0a5a9c"},
+    precision:  {border: "#d98429", bg: "#fff4e6", suit: "#b76003"}
   }
 };
 

@@ -5,7 +5,7 @@ export const DECK_SIZE = 40;
 export const DECIMAL_PLACES = 0;
 
 // function that gives the relative probability for each operation
-const OPS = ["add", "add", "add", "add", "add", "sub", "sub", "sub", "mul", "mul", "div", "exp", "root", "decimal"];
+const OPS = ["add", "add", "add", "add", "add", "sub", "sub", "sub", "mul", "mul", "div", "exp", "root", "decimal",  "decimal",  "decimal"];
 const TYPES = ["single", "single", "single", "single", "single", "single", "single", "all", "all", "target"];
 
 // function for generating random cards

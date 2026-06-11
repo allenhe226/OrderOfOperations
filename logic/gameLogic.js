@@ -62,6 +62,7 @@ export function buildSteps(plays, hands, vals, target, decimalPlaces, round, pla
     plays.forEach((play, i) => {
         const card = hands[playerIdx][play.cardIdx];
         nextHands = replaceCard(nextHands, playerIdx, play.cardIdx, round);
+        
         if (card.type === "precision") {
             runDP = Math.max(0, runDP + card.dpDelta);
             steps.push({label: card.label, type: "precision", isAi, dpDelta: card.dpDelta, newDP: runDP});
