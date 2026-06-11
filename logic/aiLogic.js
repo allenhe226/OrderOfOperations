@@ -28,7 +28,7 @@ export function aiChooseMove(aiIdx, hands, vals, target, decimalPlaces, excluded
             if (vals.includes(newTarget) && aiVal !== newTarget) {return;}
 
             // checks improvement and assigns score
-            const selfScore = Math.abs(newTarget - aiVal) - Math.abs(target - aiVal);
+            const selfScore = Math.abs(target - aiVal) - Math.abs(newTarget - aiVal);
             if (selfScore > bestScore) {
                 bestScore = selfScore; 
                 bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};
@@ -42,7 +42,7 @@ export function aiChooseMove(aiIdx, hands, vals, target, decimalPlaces, excluded
                 if (idx === aiIdx) {continue};
                 if (target === card.fn(v, dp)) {return;}
             }
-            const selfScore = Math.abs(target - newVal) - Math.abs(target - aiVal);
+            const selfScore = Math.abs(target - aiVal) - Math.abs(target - newVal);
             if (selfScore > bestScore) {
                 bestScore = selfScore; 
                 bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};
@@ -52,7 +52,7 @@ export function aiChooseMove(aiIdx, hands, vals, target, decimalPlaces, excluded
 
         if (card.type === "single") { 
             const newVal = card.fn(aiVal, dp)
-            const selfScore = Math.abs(target - newVal) - Math.abs(target - aiVal);
+            const selfScore = Math.abs(target - aiVal) - Math.abs(target - newVal);
 
             if (selfScore > bestScore) {
                 bestScore = selfScore; 
@@ -65,7 +65,7 @@ export function aiChooseMove(aiIdx, hands, vals, target, decimalPlaces, excluded
 
                 // get higher score for pushing opponents away from target
                 const dist = Math.abs(target - val);
-                const opponentScore = dist - Math.abs(target - card.fn(val, dp));
+                const opponentScore = Math.abs(target - card.fn(val, dp)) - dist;
 
                 // prioritize opponents closer to target
                 if (opponentScore >= bestScore && dist < closestDist) {
