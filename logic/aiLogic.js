@@ -1,8 +1,10 @@
 // greedy function that makes the AI choose the best local move
-export function aiChooseMove(aiIdx, hands, vals, target, excludedCardIdxs = new Set()){
+export function aiChooseMove(aiIdx, hands, vals, target, decimalPlaces, excludedCardIdxs = new Set()){
     const aiHand = hands[aiIdx];
     const aiVal = vals[aiIdx];
+    const dp = decimalPlaces;
     const unavailable = excludedCardIdxs instanceof Set ? excludedCardIdxs : new Set(excludedCardIdxs);
+    
     let bestScore = -Infinity;
     let bestMove = { cardIdx: 0, targetPlayerIdx: aiIdx};
 
@@ -10,44 +12,67 @@ export function aiChooseMove(aiIdx, hands, vals, target, excludedCardIdxs = new 
     aiHand.forEach((card, cardIdx) => {
         if (unavailable.has(cardIdx)) return;
 
+        if (card.dpDelta !== undefined) {
+            const neutralScore = 0;
+            if (neutralScore > bestScore) {
+                bestScore = neutralScore;
+                bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};
+            }
+            return;
+        }
+
         if (card.type === "target") {
-            const newTarget = card.fn(target);
+            const newTarget = card.fn(target, dp);
             
             // check if other players will reach target after move; if so, stop considering this
             if (vals.includes(newTarget) && aiVal !== newTarget) {return;}
 
             // checks improvement and assigns score
             const selfScore = Math.abs(newTarget - aiVal) - Math.abs(target - aiVal);
-            if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};}
+            if (selfScore > bestScore) {
+                bestScore = selfScore; 
+                bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};
+            }
             return;
         }
 
         if (card.type === "all") {
-            const newVal = card.fn(aiVal);
+            const newVal = card.fn(aiVal, dp);
             for (const [idx, v] of vals.entries()) {
                 if (idx === aiIdx) {continue};
-                if (target === card.fn(v)) {return;}
+                if (target === card.fn(v, dp)) {return;}
             }
             const selfScore = Math.abs(target - newVal) - Math.abs(target - aiVal);
-            if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};}
+            if (selfScore > bestScore) {
+                bestScore = selfScore; 
+                bestMove = {cardIdx: cardIdx, targetPlayerIdx: -1};
+            }
             return;
         }
 
         if (card.type === "single") { 
-            const newVal = card.fn(aiVal)
+            const newVal = card.fn(aiVal, dp)
             const selfScore = Math.abs(target - newVal) - Math.abs(target - aiVal);
 
-            if (selfScore > bestScore) {bestScore = selfScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: aiIdx};}
+            if (selfScore > bestScore) {
+                bestScore = selfScore; 
+                bestMove = {cardIdx: cardIdx, targetPlayerIdx: aiIdx};
+            }
+
+            let closestDist = Infinity;
             vals.forEach((val, playerIdx) => {
                 if (playerIdx === aiIdx) return;
 
                 // get higher score for pushing opponents away from target
-                const closestDist = Infinity;
                 const dist = Math.abs(target - val);
-                const opponentScore = dist - Math.abs(target - card.fn(val));
+                const opponentScore = dist - Math.abs(target - card.fn(val, dp));
 
                 // prioritize opponents closer to target
-                if (opponentScore >= bestScore && dist < closestDist) {bestScore = opponentScore; bestMove = {cardIdx: cardIdx, targetPlayerIdx: playerIdx};}
+                if (opponentScore >= bestScore && dist < closestDist) {
+                    bestScore = opponentScore; 
+                    closestDist = dist;
+                    bestMove = {cardIdx: cardIdx, targetPlayerIdx: playerIdx};
+                }
             })
         }
     });

@@ -2,7 +2,7 @@
 
 import React from "react";
 import {useState, useEffect, useRef} from "react";
-import {createInitialState,replaceCard,checkExactWin,getFinalRankings} from "./logic/gameLogic.js";
+import {createInitialState, replaceCard, checkExactWin, getFinalRankings, buildSteps} from "./logic/gameLogic.js";
 import {aiChooseMove} from "./logic/aiLogic.js";
 import {HAND_SIZE} from "./data/cards.js";
 import {C} from "./styles/styles.js";
@@ -180,6 +180,7 @@ export default function Main() {
     // liveVals: shown on seats during resolution, updated card-by-card
     const [liveVals, setLiveVals] = useState(null);
     const [liveTarget, setLiveTarget] = useState(null);
+    const [liveDP, setLiveDP] = useState(null);
     const timerRef = useRef(null);
 
     function triggerPulse(idx) {
@@ -194,9 +195,10 @@ export default function Main() {
 
     // Play a sequence of {type, label, isAi, phase targets: [{targetIdx, newVal}] | "target"} one at a time.
     // After the last card, call onDone().
-    async function playSequence(steps, playerCount, initialVals, initialTarget, onDone) {
+    async function playSequence(steps, playerCount, initialVals, initialTarget, initialDP, onDone) {
         let currentVals = [...initialVals];
-        let currentTarget = initialTarget
+        let currentTarget = initialTarget;
+        let currentDP = initialDP;
 
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
@@ -204,10 +206,11 @@ export default function Main() {
             // determine card
             const isTargetCard = step.type === "target";
             const isAllCard = step.type === "all";
+            const isPrecisionCard = step.type === "precision";
 
             // determine fly target position for animation
             let dx = "0%", dy = "0%";
-            if (!isTargetCard && !isAllCard) {
+            if (!isTargetCard && !isAllCard && !isPrecisionCard) {
                 const pos = seatPosition(step.targets[0].targetIdx, playerCount);
                 dx = `${(pos.x - 50) * 9}%`;
                 dy = `${(pos.y - 50) * 9}%`;
@@ -218,12 +221,15 @@ export default function Main() {
             await sleep(CARD_POP_MS + CARD_HOLD_MS);
 
             // fly or fade animation
-            const flyPhase = isTargetCard ? "fade" : isAllCard ? "fade" : "fly";
-            const flyDur = isTargetCard ? CARD_FADE_MS : isAllCard ? CARD_FADE_MS : CARD_FLY_MS;
+            const flyPhase = (isTargetCard || isAllCard || isPrecisionCard) ? "fade" : "fly";
+            const flyDur = (isTargetCard || isAllCard || isPrecisionCard) ? CARD_FADE_MS : CARD_FLY_MS;
             setActiveCard(prev => prev ? {...prev, phase: flyPhase} : null);
             await sleep(flyDur);
 
-            if (isTargetCard) {
+            if (isPrecisionCard) {
+                currentDP = step.newDP;
+                setLiveDP(currentDP);
+            } else if (isTargetCard) {
                 currentTarget = step.newTarget;
                 setLiveTarget(currentTarget);
                 triggerTargetPulse();
@@ -241,73 +247,36 @@ export default function Main() {
         setActiveCard(null);
         setLiveVals(null);
         setLiveTarget(null);
-        onDone(currentVals, currentTarget);
+        setLiveDP(null);
+        onDone(currentVals, currentTarget, currentDP);
     }
 
-    function resolveAfterMove(newVals, newTarget, newHands, logMsg, nextFn) {
+    function resolveAfterMove(newVals, newTarget, newDP, newHands, logMsg, nextFn) {
         const exactIdx = checkExactWin(newVals, newTarget);
         if (exactIdx !== -1) {
-          setGs(prev => ({ ...prev, vals: newVals, hands: newHands, target: newTarget,
+          setGs(prev => ({ ...prev, vals: newVals, hands: newHands, target: newTarget, decimalPlaces: newDP,
             log: logMsg + ` — ${exactIdx === 0 ? "You hit" : prev.names[exactIdx] + " hit"} the target exactly!`,
             phase: "game-over", earlyWinner: exactIdx}));
           setTimeout(() => setScreen("end"), 600);
           return true;
         }
-        nextFn(newVals, newTarget, newHands, logMsg);
+        nextFn(newVals, newTarget, newDP, newHands, logMsg);
         return false;
     }
 
-    function advanceTurn(vals, target, hands, log) {
+    function advanceTurn(vals, target, dp, hands, log) {
         setGs(prev => {
             const nextTurn = (prev.turnIndex + 1) % prev.numPlayers;
             const newRound = nextTurn === 0 ? prev.round + 1 : prev.round;
             if (newRound > prev.totalRounds && nextTurn === 0) {
                 setTimeout(() => setScreen("end"), 400);
-                return {...prev, vals, hands, target, log, phase:'game-over', round: newRound};
+                return {...prev, vals, hands, target, decimalPlaces: dp, log, phase:'game-over', round: newRound};
             }
 
         const phase = nextTurn === 0 ? "player-plan" : "ai-turn";
-        return {...prev, vals, hands, target, log: nextTurn === 0 ? log + " — Your turn!" : log, 
+        return {...prev, vals, hands, target, decimalPlaces: dp, log: nextTurn === 0 ? log + " — Your turn!" : log, 
             turnIndex: nextTurn, round: newRound, phase, queuedPlays: []};
         });
-    }
-
-    // builds a list of plays: {cardIdx, targetPlayerIdx} from player's perspective
-    // returns {steps, finalVals, finalTarget, newHands, summary}
-    function buildSteps(plays, hands, vals, target, playerIdx, isAi) {
-        let runVals = [...vals];
-        let runTarget = target;
-        let nextHands = hands;
-        const steps = [];
-        const summary = [];
-
-        plays.forEach((play, i) => {
-            const card = hands[playerIdx][play.cardIdx];
-            nextHands = replaceCard(nextHands, playerIdx, play.cardIdx);
-            if (card.type === "target") {
-                const newTarget = card.fn(runTarget);
-                runTarget = newTarget;
-                steps.push({label: card.label, type: "target", isAi, newTarget});
-                summary.push(`${i+1} ${card.label}: target ${target} → ${newTarget}`);
-            } else if (card.type === "all") {
-                const targets = [];
-                runVals.forEach((v,idx) => {
-                    const newVal = card.fn(v);
-                    targets.push({targetIdx: idx, newVal: newVal});
-                    summary.push(`${i+1} ${card.label} on ${idx}: ${v} → ${newVal}`)
-                    runVals[idx] = newVal;
-                });
-                steps.push({label: card.label, type: "all", isAi, targets});
-            } else if (card.type === "single") {
-                const targetIdx = play.targetPlayerIdx;
-                const oldVal = runVals[targetIdx];
-                const newVal = card.fn(oldVal);
-                runVals[targetIdx] = newVal;
-                steps.push({label: card.label, type: "single", isAi, targets: [{targetIdx: targetIdx, newVal: newVal}]});
-                summary.push(`${i+1} ${card.label} on ${targetIdx}: ${oldVal} → ${newVal}`);
-            }
-        });
-        return {steps, finalVals: runVals, finalTarget: runTarget, newHands: nextHands, summary};
     }
 
     // handles the behaviour when player is dragging cards during their turn
@@ -341,17 +310,19 @@ export default function Main() {
 
     function handleResolveQueue() {
         if (!gs || gs.phase !== "player-plan" || gs.queuedPlays.length === 0) return;
-        const {steps, finalVals, finalTarget, newHands, summary} = buildSteps(gs.queuedPlays, gs.hands, gs.vals, gs.target, 0, false);
+        const {steps, finalVals, finalTarget, finalDecimalPlaces, newHands, summary} = buildSteps(gs.queuedPlays, gs.hands, gs.vals, gs.target, gs.decimalPlaces, gs.round, 0, false);
         const msg = `You played: ${summary.join(" | ")}`;
         const startVals = [...gs.vals];
         const startTarget = gs.target;
+        const startDP = gs.decimalPlaces;
 
         setGs(prev => ({...prev, phase: "player-resolving", queuedPlays: []}));
         setLiveVals(startVals);
         setLiveTarget(startTarget);
+        setLiveDP(startDP);
 
-        playSequence(steps, gs.numPlayers, startVals, startTarget, (fv,ft) => {
-            resolveAfterMove(fv, ft, newHands, msg, (v,t,h,l) => advanceTurn(v,t,h,l));
+        playSequence(steps, gs.numPlayers, startVals, startTarget, startDP, (fv,ft,fdp) => {
+            resolveAfterMove(fv, ft, fdp, newHands, msg, (v,t,dp,h,l) => advanceTurn(v,t,dp,h,l));
         });
     }
 
@@ -365,30 +336,34 @@ export default function Main() {
             let tempHands = gs.hands;
             let tempVals = [...gs.vals];
             let tempTarget = gs.target;
+            let tempDP = gs.decimalPlaces;
             const usedCardIdxs = new Set();
 
             for (let i = 0; i < count; i++) {
-                const move = aiChooseMove(ai, tempHands, tempVals, tempTarget, usedCardIdxs);
+                const move = aiChooseMove(ai, tempHands, tempVals, tempTarget, tempDP, usedCardIdxs);
                 usedCardIdxs.add(move.cardIdx);
                 const card = tempHands[ai][move.cardIdx];
-                if (card.type === "target") {
-                    tempTarget = card.fn(tempTarget);
+                if (card.type === "precision") {
+                    tempDP = Math.max(0, tempDP + card.dpDelta);
+                } else if (card.type === "target") {
+                    tempTarget = card.fn(tempTarget, tempDP);
                 } else if (card.type === "all") {
-                    tempVals = tempVals.map((v, idx) => card.fn(v));
+                    tempVals = tempVals.map(v => card.fn(v, tempDP));
                 } else if (card.type === "single") {
-                    tempVals[move.targetPlayerIdx] = card.fn(tempVals[move.targetPlayerIdx]);
+                    tempVals[move.targetPlayerIdx] = card.fn(tempVals[move.targetPlayerIdx], tempDP);
                 }
                 plays.push({cardIdx: move.cardIdx, targetPlayerIdx: move.targetPlayerIdx ?? -1});
             }
 
-            const {steps, finalVals, finalTarget, newHands, summary} = buildSteps(plays, gs.hands, gs.vals, gs.target, ai, true);
+            const {steps, finalVals, finalTarget, finalDecimalPlaces, newHands, summary} = buildSteps(plays, gs.hands, gs.vals, gs.target, gs.decimalPlaces, gs.round, ai, true);
             const msg = `${gs.names[ai]} resolved ${count} card(s): ${summary.join(" | ")}`;
             const startVals = [...gs.vals];
 
             setLiveVals(startVals);
             setLiveTarget(gs.target);
-            playSequence(steps, gs.numPlayers, startVals, gs.target, (fv, ft) => {
-                resolveAfterMove(fv, ft, newHands, msg, (v,t,h,l) => advanceTurn(v,t,h,l));
+            setLiveDP(gs.decimalPlaces);
+            playSequence(steps, gs.numPlayers, startVals, gs.target, gs.decimalPlaces, (fv, ft, fdp) => {
+                resolveAfterMove(fv, ft, fdp, newHands, msg, (v,t,dp,h,l) => advanceTurn(v,t,dp,h,l));
             });
         }, AI_THINK_MS);
         return () => clearTimeout(timerRef.current);
@@ -406,18 +381,19 @@ export default function Main() {
             {screen === "game"  && gs && <GameScreen gs={gs} pulsing={pulsing} targetPulsing = {targetPulsing}
                 onQueuePlay={handleQueuePlay} onUnqueuePlay={handleUnqueuePlay}
                 onClearQueue={handleClearQueue} onResolveQueue={handleResolveQueue}
-                activeCard={activeCard} liveVals={liveVals} liveTarget={liveTarget}/>}
+                activeCard={activeCard} liveVals={liveVals} liveTarget={liveTarget} liveDP={liveDP}/>}
             {screen === "end"   && gs && <EndScreen gs={gs} onBack={() => setScreen("setup")} />}
         </>
     );
 }
 
-function GameScreen({gs, pulsing, targetPulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onResolveQueue, activeCard, liveVals, liveTarget}){
+function GameScreen({gs, pulsing, targetPulsing, onQueuePlay, onUnqueuePlay, onClearQueue, onResolveQueue, activeCard, liveVals, liveTarget, liveDP}){
     const isPlanning = gs.turnIndex === 0 && gs.phase === "player-plan";
     const queueFull = gs.queuedPlays.length >= gs.cardsPerTurn;
     const usedCardIdx = new Set(gs.queuedPlays.map(p => p.cardIdx));
     const displayVals = liveVals ?? gs.vals;
     const displayTarget = liveTarget ?? gs.target;
+    const displayDP = liveDP ?? gs.decimalPlaces;
 
     const queueByTarget = gs.queuedPlays.reduce((acc, play, queueIdx) => {
         const key = play.targetPlayerIdx === -1 ? "special" : play.targetPlayerIdx;
@@ -454,7 +430,7 @@ function GameScreen({gs, pulsing, targetPulsing, onQueuePlay, onUnqueuePlay, onC
                     display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
                     animation: targetPulsing ? "targetPop .5s ease" : "none"}}>
                     <div style={{fontSize:8, letterSpacing:".2em", textTransform:"uppercase", color:C.feltLabel}}>Target</div>
-                    <div style={{fontSize:30, fontWeight:700, color: targetPulsing ? "#1a8fd4" : C.text, transition: "color .3s"}}>{displayTarget}</div>
+                    <div style={{fontSize:30, fontWeight:700, color: targetPulsing ? "#1a8fd4" : C.text, transition: "color .3s"}}>{Number(displayTarget).toFixed(displayDP)}</div>
                     <div style={{fontSize:9, color:C.feltSubLabel, letterSpacing:".1em"}}>{gs.totalRounds - gs.round + 1} left</div>
                 </div>
             </div>
@@ -510,7 +486,7 @@ function GameScreen({gs, pulsing, targetPulsing, onQueuePlay, onUnqueuePlay, onC
                             textAlign:"center", pointerEvents:"none", minWidth:48}}>
                             <div style={{fontSize:8, letterSpacing:".1em", textTransform:"uppercase", color:C.textMuted, lineHeight:1.3}}>{name}</div>
                             <div style={{fontSize:19, fontWeight:700, lineHeight:1, color: isHuman ? C.gold : C.red,
-                                animation: pulsing[i] ? "pulse .4s ease" : "none"}}>{displayVals[i]}</div>
+                                animation: pulsing[i] ? "pulse .4s ease" : "none"}}>{displayVals[i].toFixed(displayDP)}</div>
                             <div style={{display:"flex", gap:2, justifyContent:"center", flexWrap:"wrap", marginTop:2}}>
                                 {(queueByTarget[i] ?? []).map(entry => (
                                     <span key={entry.queueIdx} title="Click to remove"
@@ -558,7 +534,7 @@ function GameScreen({gs, pulsing, targetPulsing, onQueuePlay, onUnqueuePlay, onC
                         const tc = cardTypeColors(card.type);
                         const isQueued = usedCardIdx.has(i);
                         const isDisabled = !isPlanning || isQueued || queueFull;
-                        const badgeColor = card.type === "all" ? "#7a2fd4" : card.type === "target" ? "#1a8fd4" : C.gold;
+                        const badgeColor = card.type === "all" ? "#7a2fd4" : card.type === "target" ? "#1a8fd4" : card.type === "single" ? C.gold : C.typeColors.precision.border;
 
                         return (
                             <button key={i}

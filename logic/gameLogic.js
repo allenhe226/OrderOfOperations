@@ -1,4 +1,4 @@
-import { START_VALUE, TARGETS, generateCard, generateHand } from "../data/cards.js";
+import {START_VALUE, TARGETS, DECIMAL_PLACES, generateCard, generateHand} from "../data/cards.js";
 
 // data for each player
 export const PLAYERS = [
@@ -7,19 +7,6 @@ export const PLAYERS = [
     {name: "Epsilon", emoji: "🤖", cls: "ai2"},
     {name: "Zeta", emoji: "🤖", cls: "ai3"},
 ]
-
-export function shuffle(arr) {
-    const a = [...arr];
-    for (let i = 1; i < a.length; i++){
-        const j = Math.floor(Math.random() * (i+1));
-        
-        // switches a[i] and a[j]
-        const temp = a[i]
-        a[i] = a[j]
-        a[j] = temp
-    }
-    return a;
-}
 
 export function replaceCard(hand, playerIdx, cardIdx, round){
     const newHands = hand.map(h => [...h]);
@@ -58,5 +45,55 @@ export function createInitialState(numAI, totalRounds, cardsPerTurn = 1) {
         log: "Your turn - drag cards onto player profiles, then press Ready.",
         earlyWinner: null,
         playedCard: null,
+        decimalPlaces: DECIMAL_PLACES
     };
+}
+
+// builds a list of plays: {cardIdx, targetPlayerIdx} from player's perspective
+// returns {steps, finalVals, finalTarget, finalDecimalPlaces, newHands, summary}
+export function buildSteps(plays, hands, vals, target, decimalPlaces, round, playerIdx, isAi){
+    let runVals = [...vals];
+    let runTarget = target;
+    let runDP = decimalPlaces;
+    let nextHands = hands;
+    const steps = [];
+    const summary = [];
+
+    plays.forEach((play, i) => {
+        const card = hands[playerIdx][play.cardIdx];
+        nextHands = replaceCard(nextHands, playerIdx, play.cardIdx, round);
+        if (card.type === "precision") {
+            runDP = Math.max(0, runDP + card.dpDelta);
+            steps.push({label: card.label, type: "precision", isAi, dpDelta: card.dpDelta, newDP: runDP});
+            summary.push(`${i+1} ${card.label}: precision now ${runDP} decimal places.`);
+        } 
+        
+        else if (card.type === "target") {
+            const newTarget = card.fn(runTarget, runDP);
+            runTarget = newTarget;
+            steps.push({label: card.label, type: "target", isAi, newTarget});
+            summary.push(`${i+1} ${card.label} on target: ${target} → ${newTarget}`);
+        } 
+        
+        else if (card.type === "all") {
+            const targets = runVals.map((v,idx) => {
+                const newVal = card.fn(v, runDP);
+                return {targetIdx: idx, newVal};
+            });
+            targets.forEach(({targetIdx, newVal}) => {runVals[targetIdx] = newVal;});
+            steps.push({label: card.label, type: "all", isAi, targets});
+            summary.push(`${i+1} ${card.label} on all: ${targets.map(t => t.newVal).join(", ")}`);
+        } 
+        
+        else if (card.type === "single") {
+            const targetIdx = play.targetPlayerIdx;
+            const oldVal = runVals[targetIdx];
+            const newVal = card.fn(oldVal, runDP);
+            runVals[targetIdx] = newVal;
+            steps.push({label: card.label, type: "single", isAi, targets: [{targetIdx: targetIdx, newVal: newVal}]});
+            summary.push(`${i+1} ${card.label} on ${targetIdx}: ${oldVal} → ${newVal}`);
+        }
+    });
+    return {steps, finalVals: runVals, finalTarget: runTarget, finalDecimalPlaces: runDP, newHands: nextHands, summary};
+
 }
